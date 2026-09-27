@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('superslm', {
     ipcRenderer.invoke('settings:patch', patch),
   setFullscreen: (on: boolean): Promise<unknown> =>
     ipcRenderer.invoke('window:fullscreen', on),
+  openDevTools: (): Promise<unknown> => ipcRenderer.invoke('window:devtools'),
   listModels: (search: string, sort: string): Promise<unknown> =>
     ipcRenderer.invoke('models:list', search, sort)
 });

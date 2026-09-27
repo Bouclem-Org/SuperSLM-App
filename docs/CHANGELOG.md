@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4 - 2026-09-27
+
+- Added Chat tab (UI only — sending shows a "not implemented" error, no model yet)
+- Added Debug settings page: debug output toggle, DevTools controls, recent error list
+- Debug mode shows error codes/details in the UI, including chat errors
+- Added `debug` and `devtools` persisted settings; DevTools can open detached on launch
+
 ## 0.1.3 - 2026-09-27
 
 - Fixed missing app icon: generated `assets/icon.ico`/`icon.png` (amber mark, pixel "S")

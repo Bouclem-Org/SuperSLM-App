@@ -7,9 +7,16 @@ export type ThemeName = 'dark' | 'light' | 'midnight' | 'sand' | 'forest';
 export interface SuperslmSettings {
   theme: ThemeName;
   fullscreen: boolean;
+  debug: boolean;
+  devtools: boolean;
 }
 
-const DEFAULT_SETTINGS: SuperslmSettings = { theme: 'dark', fullscreen: false };
+const DEFAULT_SETTINGS: SuperslmSettings = {
+  theme: 'dark',
+  fullscreen: false,
+  debug: false,
+  devtools: false
+};
 
 const THEME_VALUES: readonly ThemeName[] = ['dark', 'light', 'midnight', 'sand', 'forest'];
 
@@ -46,6 +53,8 @@ export async function patchSettings(
   const next = await loadSettings();
   if (patch.theme && THEME_VALUES.includes(patch.theme)) next.theme = patch.theme;
   if (typeof patch.fullscreen === 'boolean') next.fullscreen = patch.fullscreen;
+  if (typeof patch.debug === 'boolean') next.debug = patch.debug;
+  if (typeof patch.devtools === 'boolean') next.devtools = patch.devtools;
   await ensureStorage();
   await writeFile(settingsPath(), JSON.stringify(next, null, 2) + '\n', 'utf8');
   return next;

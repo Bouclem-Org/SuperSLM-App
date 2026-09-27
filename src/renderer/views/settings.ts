@@ -1,11 +1,20 @@
-import { getAppInfo, getChangelog, getSettings, patchSettings, setFullscreen } from '../api';
-import { byId } from '../core/dom';
+import {
+  getAppInfo,
+  getChangelog,
+  getSettings,
+  openDevTools,
+  patchSettings,
+  setFullscreen
+} from '../api';
+import { getDebugEntries, setDebugEnabled } from '../core/debug';
+import { byId, escapeHtml } from '../core/dom';
 import { renderMarkdown } from '../core/markdown';
 import { onTabOpen } from '../core/tabs';
 
 const ICON_GENERAL = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`;
 const ICON_THEME = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/></svg>`;
 const ICON_CHANGELOG = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>`;
+const ICON_DEBUG = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9a4 4 0 1 1 8 0v5a4 4 0 0 1-8 0z"/><path d="M9 5.5a3 3 0 0 1 6 0"/><path d="M8 10 4.5 8.5M8 14H4M8.5 17.5 5 19M16 10l3.5-1.5M16 14h4M15.5 17.5 19 19"/></svg>`;
 
 const THEMES: { id: SuperslmTheme; label: string; hint: string }[] = [
   { id: 'dark', label: 'Dark', hint: 'Warm grey, low light' },
@@ -56,6 +65,58 @@ const initGeneral = (): void => {
   });
 };
 
+const initDebug = (): void => {
+  const dbg = byId('opt-debug') as HTMLInputElement;
+  const dt = byId('opt-devtools') as HTMLInputElement;
+  const openBtn = byId('btn-devtools') as HTMLButtonElement;
+  const listEl = byId('debug-list');
+
+  getSettings()
+    .then((s) => {
+      dbg.checked = s.debug;
+      dt.checked = s.devtools;
+    })
+    .catch((err: unknown) => console.error('Failed to load settings:', err));
+
+  dbg.addEventListener('change', () => {
+    setDebugEnabled(dbg.checked);
+    patchSettings({ debug: dbg.checked }).catch((err: unknown) =>
+      console.error('Failed to save debug:', err)
+    );
+  });
+
+  dt.addEventListener('change', () => {
+    patchSettings({ devtools: dt.checked }).catch((err: unknown) =>
+      console.error('Failed to save devtools:', err)
+    );
+  });
+
+  openBtn.addEventListener('click', () => {
+    openDevTools().catch((err: unknown) => console.error('Failed to open DevTools:', err));
+  });
+
+  const renderEntries = (): void => {
+    const items = getDebugEntries();
+    listEl.innerHTML = items.length
+      ? items
+          .map(
+            (e) => `
+        <div class="debug-entry">
+          <div class="debug-entry-head">
+            <span class="debug-label">${escapeHtml(e.label)}</span>
+            <span class="debug-time">${e.time}</span>
+          </div>
+          <div class="debug-detail">${escapeHtml(e.detail)}</div>
+        </div>`
+          )
+          .join('')
+      : '<p class="debug-none">No errors captured yet.</p>';
+  };
+
+  document.addEventListener('superslm:debug', renderEntries);
+  renderEntries();
+};
+
 let changelogLoaded = false;
 const loadChangelog = (): void => {
   if (changelogLoaded) return;
@@ -83,6 +144,9 @@ export const mountSettings = (root: HTMLElement): void => {
         </button>
         <button class="settings-item" data-settings="changelog" type="button">
           ${ICON_CHANGELOG} <span class="nav-text">Changelog</span>
+        </button>
+        <button class="settings-item" data-settings="debug" type="button">
+          ${ICON_DEBUG} <span class="nav-text">Debug</span>
         </button>
       </nav>
 
@@ -129,10 +193,39 @@ export const mountSettings = (root: HTMLElement): void => {
           <h2 class="page-title">Changelog</h2>
           <div class="changelog" id="changelog-body"></div>
         </div>
+
+        <div class="settings-page" id="settings-debug">
+          <h2 class="page-title">Debug</h2>
+
+          <div class="section-group">
+            <h3 class="section-title">Debug output</h3>
+            <label class="setting-row">
+              <input type="checkbox" id="opt-debug" />
+              <span>Enable debug output</span>
+              <small>Error codes and details in the UI</small>
+            </label>
+          </div>
+
+          <div class="section-group">
+            <h3 class="section-title">DevTools</h3>
+            <label class="setting-row">
+              <input type="checkbox" id="opt-devtools" />
+              <span>Open DevTools on launch</span>
+              <small>Detached window</small>
+            </label>
+            <button class="action-btn" id="btn-devtools" type="button">Open DevTools now</button>
+          </div>
+
+          <div class="section-group">
+            <h3 class="section-title">Recent errors</h3>
+            <div class="debug-list" id="debug-list"></div>
+          </div>
+        </div>
       </div>
     </div>`;
 
   initMenu();
   initGeneral();
+  initDebug();
   onTabOpen('settings', loadChangelog);
 };

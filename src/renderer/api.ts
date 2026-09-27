@@ -15,6 +15,8 @@ export const patchSettings = (patch: Partial<SuperslmSettings>): Promise<Supersl
 
 export const setFullscreen = (on: boolean): Promise<void> => requireApi().setFullscreen(on);
 
+export const openDevTools = (): Promise<void> => requireApi().openDevTools();
+
 export const listModels = (
   search: string,
   sort: SuperslmModelSort

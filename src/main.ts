@@ -39,6 +39,7 @@ async function createWindow(): Promise<void> {
   });
 
   void win.loadFile(path.join(__dirname, '..', 'src', 'renderer', 'index.html'));
+  if (settings.devtools) win.webContents.openDevTools({ mode: 'detach' });
   win.once('ready-to-show', () => win.show());
 }
 
@@ -64,6 +65,10 @@ ipcMain.handle('settings:patch', (_event, patch: Partial<SuperslmSettings>) =>
 
 ipcMain.handle('window:fullscreen', (event, flag: unknown) => {
   BrowserWindow.fromWebContents(event.sender)?.setFullScreen(flag === true);
+});
+
+ipcMain.handle('window:devtools', (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.webContents.openDevTools({ mode: 'detach' });
 });
 
 ipcMain.handle('models:list', async (_event, search: unknown, sort: unknown) => {

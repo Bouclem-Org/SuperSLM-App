@@ -8,6 +8,7 @@
   --faint: oklch(0.462 0.01 70);
   --accent: oklch(0.768 0.106 75);
   --ok: oklch(0.65 0.12 152);
+  --err: oklch(0.7 0.14 30);
   --font-display: 'Space Grotesk', 'Segoe UI Variable Display', system-ui, sans-serif;
   --font-body: 'Instrument Sans', 'Segoe UI Variable Text', system-ui, sans-serif;
   color-scheme: dark;
@@ -23,6 +24,7 @@
   --faint: oklch(0.598 0.014 70);
   --accent: oklch(0.575 0.118 68);
   --ok: oklch(0.545 0.115 150);
+  --err: oklch(0.56 0.15 30);
   color-scheme: light;
 }
 
@@ -36,6 +38,7 @@
   --faint: oklch(0.458 0.014 262);
   --accent: oklch(0.735 0.095 240);
   --ok: oklch(0.65 0.12 152);
+  --err: oklch(0.7 0.13 25);
   color-scheme: dark;
 }
 
@@ -49,6 +52,7 @@
   --faint: oklch(0.6 0.024 75);
   --accent: oklch(0.545 0.128 52);
   --ok: oklch(0.545 0.11 150);
+  --err: oklch(0.55 0.15 30);
   color-scheme: light;
 }
 
@@ -62,6 +66,7 @@
   --faint: oklch(0.468 0.016 145);
   --accent: oklch(0.762 0.1 80);
   --ok: oklch(0.65 0.12 152);
+  --err: oklch(0.72 0.12 30);
   color-scheme: dark;
 }
 

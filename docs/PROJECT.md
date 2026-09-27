@@ -4,11 +4,11 @@ A desktop superapp for small language models (SLMs), built with Electron.
 
 ## Status
 
-v0.1.3 — Home tab, Models tab (Hugging Face liked/downloaded sort + search),
-and a Settings surface (General, Theme, Changelog) opened from the sidebar
-gear button. Five themes + fullscreen persist to `~/.superslm/settings.json`.
-App icon in `assets/` (regenerate via `node scripts/gen-icon.mjs`).
-Renderer is modular: core/api/views.
+v0.1.4 — Home, Models (HF liked/downloaded sort + search), Chat (stub: send
+shows a not-implemented error), and Settings (General, Theme, Changelog,
+Debug) via the sidebar gear. Five themes, fullscreen, debug and devtools
+persist to `~/.superslm/settings.json`. App icon in `assets/` (regenerate via
+`node scripts/gen-icon.mjs`). Renderer is modular: core/api/views.
 
 ## Stack
 
@@ -27,8 +27,9 @@ Renderer is modular: core/api/views.
 - `src/preload.ts` — exposes `window.superslm` via `contextBridge`
 - `src/renderer/api.ts` — typed wrappers over `window.superslm`
 - `src/renderer/core/` — `dom.ts` (byId, escapeHtml), `tabs.ts` (router +
-  `onTabOpen` lazy hooks), `markdown.ts`, `theme.ts` (apply + persist)
-- `src/renderer/views/` — `home.ts`, `models.ts`, `settings.ts` — each
+  `onTabOpen` lazy hooks), `markdown.ts`, `theme.ts` (apply + persist),
+  `debug.ts` (debug flag + recent-error log emitting `superslm:debug`)
+- `src/renderer/views/` — `home.ts`, `models.ts`, `chat.ts`, `settings.ts` — each
   `mount(root)` renders markup into its tab section and wires its own events
 - `src/renderer/styles/` — `base.css` (theme vars, shell, sidebar, shared),
   `home.css`, `models.css`, `settings.css`
@@ -39,7 +40,7 @@ Renderer is modular: core/api/views.
 
 ## User storage
 
-`~/.superslm/settings.json` — `{"theme": "dark"|"light"|"midnight"|"sand"|"forest", "fullscreen": boolean}`,
+`~/.superslm/settings.json` — `{"theme", "fullscreen", "debug", "devtools"}`,
 created on first run. Planned: `~/.superslm/models/<org>/<name>/` for downloads.
 
 ## Run
