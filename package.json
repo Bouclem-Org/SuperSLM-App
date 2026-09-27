@@ -1,0 +1,16 @@
+{
+  "name": "superslm-app",
+  "version": "0.1.0",
+  "description": "SuperSLM - a desktop home for small language models",
+  "main": "out/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.web.json",
+    "start": "npm run build && electron ."
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "26.6.3",
+    "electron": "44.4.5",
+    "typescript": "7.0.2"
+  }
+}

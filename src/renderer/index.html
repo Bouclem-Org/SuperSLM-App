@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com"
+  />
+  <title>SuperSLM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500&family=Space+Grotesk:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <span class="brand-name">SuperSLM</span>
+      </div>
+
+      <nav class="nav" aria-label="Primary">
+        <button class="nav-item is-active" data-tab="home" type="button">Home</button>
+        <button class="nav-item" data-tab="chat" type="button" disabled>
+          Chat <span class="nav-soon">soon</span>
+        </button>
+        <button class="nav-item" data-tab="models" type="button" disabled>
+          Models <span class="nav-soon">soon</span>
+        </button>
+      </nav>
+
+      <footer class="sidebar-foot">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="app-info">Ready</span>
+      </footer>
+    </aside>
+
+    <main class="content">
+      <section class="tab is-visible" id="tab-home">
+        <p class="eyebrow" id="greeting">Welcome</p>
+        <h1 class="title">SuperSLM</h1>
+        <p class="lede">A quiet home for small models. More is on the way.</p>
+        <div class="meta">
+          <span id="date-line"></span>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
