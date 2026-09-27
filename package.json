@@ -1,6 +1,6 @@
 {
   "name": "superslm-app",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "SuperSLM - a desktop home for small language models",
   "main": "out/main.js",
   "scripts": {

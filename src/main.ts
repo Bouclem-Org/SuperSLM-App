@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 function createWindow(): void {
@@ -24,6 +25,7 @@ function createWindow(): void {
 }
 
 ipcMain.handle('app:info', () => ({
+  appVersion: app.getVersion(),
   platform: process.platform,
   versions: {
     electron: process.versions.electron,
@@ -31,6 +33,10 @@ ipcMain.handle('app:info', () => ({
     node: process.versions.node
   }
 }));
+
+ipcMain.handle('app:changelog', () =>
+  readFile(path.join(app.getAppPath(), 'docs', 'CHANGELOG.md'), 'utf8')
+);
 
 void app.whenReady().then(() => {
   app.setName('SuperSLM');

@@ -4,8 +4,9 @@ A desktop superapp for small language models (SLMs), built with Electron.
 
 ## Status
 
-Early scaffold. Currently only a **Home** tab exists; the shell is designed to
-grow additional tabs (chat, model management, settings) later.
+v0.1.1 — Home tab plus a Settings surface (General + Changelog) opened from a
+gear button in the sidebar footer. The shell is designed to grow additional
+tabs (chat, model management) later.
 
 ## Stack
 
@@ -17,13 +18,18 @@ grow additional tabs (chat, model management, settings) later.
 ## Architecture
 
 - `src/main.ts` — creates the `BrowserWindow` (sandboxed, context isolation on,
-  node integration off), handles the `app:info` IPC call
-- `src/preload.ts` — exposes a minimal `window.superslm` API via `contextBridge`
-- `src/renderer/index.html` — app shell: sidebar nav + tab sections
-- `src/renderer/app.ts` — tab switching, greeting, app info display
+  node integration off); IPC: `app:info` (versions, platform), `app:changelog`
+  (reads `docs/CHANGELOG.md`)
+- `src/preload.ts` — exposes `window.superslm` via `contextBridge`
+- `src/renderer/index.html` — app shell: sidebar nav, gear button, tab sections
+  (`tab-home`, `tab-settings`); settings has its own sub-menu
+  (`settings-general`, `settings-changelog`)
+- `src/renderer/app.ts` — tab + settings-menu switching, greeting, app info,
+  changelog fetch and minimal markdown rendering
 - `src/renderer/global.d.ts` — types for `window.superslm`
+- `src/renderer/icons/` — shared SVG icon set (stroke style, 24x24)
 - `src/renderer/styles.css` — dark warm-grey minimal theme (oklch palette)
-- `tsconfig.json` — main/preload compilation; `tsconfig.web.json` — renderer
+- `tsconfig.json` — main/preload; `tsconfig.web.json` — renderer
 
 ## Run
 
@@ -34,6 +40,6 @@ npm start    # builds both tsconfigs, then launches electron
 
 ## Direction
 
-The sidebar nav already contains disabled slots for future tabs. New tabs are
-added by creating a `<section class="tab" id="tab-name">` and a matching
-`data-tab="name"` nav button.
+New tabs: add `<section class="tab" id="tab-name">` + a `data-tab="name"` nav
+button. New settings pages: add a `data-settings="name"` menu item + a matching
+`settings-name` page. The changelog view always reflects `docs/CHANGELOG.md`.
