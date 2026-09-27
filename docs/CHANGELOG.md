@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.5 - 2026-09-28
+
+- Added local GGUF picker (Models toolbar + Settings > Models), saved as `modelFile`
+- Added model detail panel: click a model to see metadata, full README description, and GGUF file list with sizes
+- Added real downloads: GGUF files save to `~/.superslm/models/<org>/<name>/` with progress bars
+- Added "Ask before downloading" setting (`confirmDownload`) — native confirm dialog before saving
+- Added Models settings page (local model + download options)
+- Added Text size setting under Settings > Theme: Compact / Default / Large / XL (zooms the whole UI, persisted as `fontScale`)
+- Started llama.cpp backend: finds `llama-server` in `~/.superslm/bin` or PATH, start/stop/status in Settings > Debug
+- Chat shows the currently selected local model
+- Upgraded the markdown renderer: tables, code blocks, inline code, italics, numbered lists, blockquotes — used for both model descriptions and the changelog
+- README cleaning: strips front-matter, comments, HTML tags, badges, hr lines; truncates long cards at paragraph boundaries
+- Fixed Models toolbar wrapping/clipping at all window sizes
+
 ## 0.1.4 - 2026-09-27
 
 - Added Chat tab (UI only — sending shows a "not implemented" error, no model yet)

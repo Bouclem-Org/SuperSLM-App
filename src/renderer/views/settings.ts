@@ -1,12 +1,16 @@
 import {
   getAppInfo,
+  getBackendStatus,
   getChangelog,
   getSettings,
   openDevTools,
   patchSettings,
-  setFullscreen
+  pickGguf,
+  setFullscreen,
+  startBackend,
+  stopBackend
 } from '../api';
-import { getDebugEntries, setDebugEnabled } from '../core/debug';
+import { getDebugEntries, reportDebug, setDebugEnabled } from '../core/debug';
 import { byId, escapeHtml } from '../core/dom';
 import { renderMarkdown } from '../core/markdown';
 import { onTabOpen } from '../core/tabs';
@@ -15,6 +19,16 @@ const ICON_GENERAL = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><
 const ICON_THEME = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/></svg>`;
 const ICON_CHANGELOG = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>`;
 const ICON_DEBUG = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9a4 4 0 1 1 8 0v5a4 4 0 0 1-8 0z"/><path d="M9 5.5a3 3 0 0 1 6 0"/><path d="M8 10 4.5 8.5M8 14H4M8.5 17.5 5 19M16 10l3.5-1.5M16 14h4M15.5 17.5 19 19"/></svg>`;
+const ICON_MODELS = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>`;
+
+const fileName = (p: string): string => p.split(/[\\/]/).pop() ?? p;
+
+const TEXT_SIZES: { value: number; label: string; hint: string }[] = [
+  { value: 0.85, label: 'Compact', hint: 'Denser UI' },
+  { value: 1, label: 'Default', hint: 'Standard size' },
+  { value: 1.15, label: 'Large', hint: 'Easier to read' },
+  { value: 1.3, label: 'XL', hint: 'Biggest text' }
+];
 
 const THEMES: { id: SuperslmTheme; label: string; hint: string }[] = [
   { id: 'dark', label: 'Dark', hint: 'Warm grey, low light' },
@@ -63,6 +77,75 @@ const initGeneral = (): void => {
       console.error('Failed to set fullscreen:', err)
     );
   });
+};
+
+const initModels = (): void => {
+  const label = byId('model-file-label');
+  const pickBtn = byId('btn-pick-gguf') as HTMLButtonElement;
+  const clearBtn = byId('btn-clear-model') as HTMLButtonElement;
+  const confirmBox = byId('opt-confirm-dl') as HTMLInputElement;
+
+  const showPath = (p: string): void => {
+    label.textContent = p ? fileName(p) : 'None';
+    label.title = p;
+    clearBtn.disabled = !p;
+  };
+
+  getSettings()
+    .then((s) => {
+      showPath(s.modelFile);
+      confirmBox.checked = s.confirmDownload;
+    })
+    .catch((err: unknown) => console.error('Failed to load settings:', err));
+
+  pickBtn.addEventListener('click', () => {
+    pickGguf()
+      .then((p) => {
+        if (p) showPath(p);
+      })
+      .catch((err: unknown) => reportDebug('settings.pickGguf', err));
+  });
+
+  clearBtn.addEventListener('click', () => {
+    patchSettings({ modelFile: '' })
+      .then(() => showPath(''))
+      .catch((err: unknown) => console.error('Failed to clear model:', err));
+  });
+
+  confirmBox.addEventListener('change', () => {
+    patchSettings({ confirmDownload: confirmBox.checked }).catch((err: unknown) =>
+      console.error('Failed to save confirm-download:', err)
+    );
+  });
+};
+
+const refreshBackendStatus = (): void => {
+  getBackendStatus()
+    .then((s) => {
+      byId('be-binary').textContent = s.binary ?? 'not found';
+      byId('be-running').textContent = s.running ? 'yes' : 'no';
+      byId('be-port').textContent = String(s.port);
+      byId('be-error').textContent = s.lastError ?? '';
+    })
+    .catch((err: unknown) => console.error('Failed to load backend status:', err));
+};
+
+const initBackend = (): void => {
+  byId('btn-be-start').addEventListener('click', () => {
+    getSettings()
+      .then((s) => startBackend(s.modelFile))
+      .then(() => refreshBackendStatus())
+      .catch((err: unknown) => {
+        reportDebug('backend.start', err);
+        refreshBackendStatus();
+      });
+  });
+  byId('btn-be-stop').addEventListener('click', () => {
+    stopBackend()
+      .then(() => refreshBackendStatus())
+      .catch((err: unknown) => console.error('Failed to stop backend:', err));
+  });
+  refreshBackendStatus();
 };
 
 const initDebug = (): void => {
@@ -139,6 +222,9 @@ export const mountSettings = (root: HTMLElement): void => {
         <button class="settings-item is-active" data-settings="general" type="button">
           ${ICON_GENERAL} <span class="nav-text">General</span>
         </button>
+        <button class="settings-item" data-settings="models" type="button">
+          ${ICON_MODELS} <span class="nav-text">Models</span>
+        </button>
         <button class="settings-item" data-settings="theme" type="button">
           ${ICON_THEME} <span class="nav-text">Theme</span>
         </button>
@@ -174,6 +260,30 @@ export const mountSettings = (root: HTMLElement): void => {
           </div>
         </div>
 
+        <div class="settings-page" id="settings-models">
+          <h2 class="page-title">Models</h2>
+
+          <div class="section-group">
+            <h3 class="section-title">Local model</h3>
+            <div class="model-source">
+              <span class="model-source-path" id="model-file-label">None</span>
+              <div class="model-source-btns">
+                <button class="action-btn" id="btn-pick-gguf" type="button">Browse .gguf…</button>
+                <button class="action-btn" id="btn-clear-model" type="button" disabled>Clear</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-group">
+            <h3 class="section-title">Downloads</h3>
+            <label class="setting-row">
+              <input type="checkbox" id="opt-confirm-dl" checked />
+              <span>Ask before downloading</span>
+              <small>Confirm dialog before saving a file</small>
+            </label>
+          </div>
+        </div>
+
         <div class="settings-page" id="settings-theme">
           <h2 class="page-title">Theme</h2>
           <div class="theme-options" role="radiogroup" aria-label="Theme">
@@ -186,6 +296,21 @@ export const mountSettings = (root: HTMLElement): void => {
             </label>`
             ).join('')}
           </div>
+
+          <div class="section-group">
+            <h3 class="section-title">Text size</h3>
+            <div class="theme-options" role="radiogroup" aria-label="Text size">
+              ${TEXT_SIZES.map(
+                (s) => `
+              <label class="theme-option">
+                <input type="radio" name="textsize" value="${s.value}" />
+                <span>${s.label}</span>
+                <small>${s.hint}</small>
+              </label>`
+              ).join('')}
+            </div>
+          </div>
+
           <p class="settings-note">Saved to ~/.superslm/settings.json</p>
         </div>
 
@@ -217,6 +342,20 @@ export const mountSettings = (root: HTMLElement): void => {
           </div>
 
           <div class="section-group">
+            <h3 class="section-title">llama.cpp backend</h3>
+            <dl class="about-list">
+              <div class="about-row"><dt>Binary</dt><dd id="be-binary">—</dd></div>
+              <div class="about-row"><dt>Running</dt><dd id="be-running">—</dd></div>
+              <div class="about-row"><dt>Port</dt><dd id="be-port">—</dd></div>
+            </dl>
+            <p class="debug-none" id="be-error"></p>
+            <div class="be-btns">
+              <button class="action-btn" id="btn-be-start" type="button">Start backend</button>
+              <button class="action-btn" id="btn-be-stop" type="button">Stop</button>
+            </div>
+          </div>
+
+          <div class="section-group">
             <h3 class="section-title">Recent errors</h3>
             <div class="debug-list" id="debug-list"></div>
           </div>
@@ -226,6 +365,8 @@ export const mountSettings = (root: HTMLElement): void => {
 
   initMenu();
   initGeneral();
+  initModels();
   initDebug();
+  initBackend();
   onTabOpen('settings', loadChangelog);
 };

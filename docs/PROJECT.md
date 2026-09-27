@@ -4,11 +4,15 @@ A desktop superapp for small language models (SLMs), built with Electron.
 
 ## Status
 
-v0.1.4 — Home, Models (HF liked/downloaded sort + search), Chat (stub: send
-shows a not-implemented error), and Settings (General, Theme, Changelog,
-Debug) via the sidebar gear. Five themes, fullscreen, debug and devtools
-persist to `~/.superslm/settings.json`. App icon in `assets/` (regenerate via
-`node scripts/gen-icon.mjs`). Renderer is modular: core/api/views.
+v0.1.5 — Home, Models (HF sort + search, detail panel, GGUF downloads to
+`~/.superslm/models/`, local .gguf picker), Chat (stub: send shows a
+not-implemented error), and Settings (General, Models, Theme, Changelog,
+Debug) via the sidebar gear. Five themes, fullscreen, debug, devtools,
+modelFile and confirmDownload persist to `~/.superslm/settings.json`. App
+icon in `assets/` (regenerate via `node scripts/gen-icon.mjs`). llama.cpp
+backend started: `src/llamacpp.ts` spawns `llama-server` (found in
+`~/.superslm/bin` or on PATH) with status/start/stop IPC. Renderer is
+modular: core/api/views.
 
 ## Stack
 
@@ -22,7 +26,11 @@ persist to `~/.superslm/settings.json`. App icon in `assets/` (regenerate via
 
 - `src/main.ts` — `BrowserWindow` (sandboxed, context isolation on, node
   integration off); IPC: `app:info`, `app:changelog`, `settings:get`,
-  `settings:patch`, `models:list` (proxies the Hugging Face API)
+  `settings:patch`, `dialog:pickGguf`, `window:fullscreen`, `window:devtools`,
+  `models:list` / `models:detail` / `models:download` (proxies Hugging Face,
+  streams files to disk, `models:progress` events), `backend:*`
+- `src/llamacpp.ts` — llama.cpp backend: locates `llama-server`, spawns it
+  with the selected model on port 8391, reports status
 - `src/settings.ts` — `~/.superslm/` init, `settings.json` load/patch
 - `src/preload.ts` — exposes `window.superslm` via `contextBridge`
 - `src/renderer/api.ts` — typed wrappers over `window.superslm`
@@ -40,8 +48,10 @@ persist to `~/.superslm/settings.json`. App icon in `assets/` (regenerate via
 
 ## User storage
 
-`~/.superslm/settings.json` — `{"theme", "fullscreen", "debug", "devtools"}`,
-created on first run. Planned: `~/.superslm/models/<org>/<name>/` for downloads.
+`~/.superslm/settings.json` — `{"theme", "fullscreen", "debug", "devtools",
+"modelFile", "confirmDownload"}`, created on first run.
+`~/.superslm/models/<org>/<name>/` — downloaded GGUF files.
+`~/.superslm/bin/` — optional place for `llama-server` binary.
 
 ## Run
 

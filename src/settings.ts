@@ -9,13 +9,19 @@ export interface SuperslmSettings {
   fullscreen: boolean;
   debug: boolean;
   devtools: boolean;
+  modelFile: string;
+  confirmDownload: boolean;
+  fontScale: number;
 }
 
 const DEFAULT_SETTINGS: SuperslmSettings = {
   theme: 'dark',
   fullscreen: false,
   debug: false,
-  devtools: false
+  devtools: false,
+  modelFile: '',
+  confirmDownload: true,
+  fontScale: 1
 };
 
 const THEME_VALUES: readonly ThemeName[] = ['dark', 'light', 'midnight', 'sand', 'forest'];
@@ -55,6 +61,17 @@ export async function patchSettings(
   if (typeof patch.fullscreen === 'boolean') next.fullscreen = patch.fullscreen;
   if (typeof patch.debug === 'boolean') next.debug = patch.debug;
   if (typeof patch.devtools === 'boolean') next.devtools = patch.devtools;
+  if (typeof patch.modelFile === 'string' && patch.modelFile.length < 1024) {
+    next.modelFile = patch.modelFile;
+  }
+  if (typeof patch.confirmDownload === 'boolean') next.confirmDownload = patch.confirmDownload;
+  if (
+    typeof patch.fontScale === 'number' &&
+    patch.fontScale >= 0.7 &&
+    patch.fontScale <= 1.5
+  ) {
+    next.fontScale = Math.round(patch.fontScale * 100) / 100;
+  }
   await ensureStorage();
   await writeFile(settingsPath(), JSON.stringify(next, null, 2) + '\n', 'utf8');
   return next;

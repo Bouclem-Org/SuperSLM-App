@@ -5,6 +5,14 @@
   height: 100%;
 }
 
+.chat-model {
+  margin: 0;
+  padding: 12px 48px 0;
+  color: var(--faint);
+  font-size: 11.5px;
+  text-align: right;
+}
+
 .chat-scroll {
   flex: 1;
   display: flex;
@@ -123,6 +131,10 @@
 /* ---- adaptive layout ---- */
 
 @media (max-width: 760px) {
+  .chat-model {
+    padding: 10px 20px 0;
+  }
+
   .chat-scroll {
     padding: 20px 20px 12px;
   }

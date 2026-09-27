@@ -1,7 +1,7 @@
-export const byId = (id: string): HTMLElement => {
+export const byId = <T extends HTMLElement = HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
   if (!el) throw new Error(`Missing element: #${id}`);
-  return el;
+  return el as T;
 };
 
 export const escapeHtml = (s: string): string =>

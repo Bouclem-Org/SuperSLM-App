@@ -166,6 +166,78 @@
   color: var(--faint);
 }
 
+.changelog h4 {
+  margin: 22px 0 8px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.changelog ol {
+  margin: 8px 0 16px;
+  padding-left: 18px;
+  color: var(--dim);
+  font-size: 13.5px;
+  line-height: 1.75;
+}
+
+.changelog code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--raised);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 12px;
+}
+
+.md-code {
+  margin: 10px 0 16px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--raised);
+}
+
+.md-code code {
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.md-table {
+  margin: 10px 0 16px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.md-table th,
+.md-table td {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  color: var(--dim);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.md-table th {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.changelog blockquote {
+  margin: 10px 0;
+  padding: 2px 14px;
+  border-left: 2px solid var(--accent);
+  color: var(--dim);
+  font-size: 13.5px;
+  font-style: italic;
+  line-height: 1.65;
+}
+
 /* ---- debug ---- */
 
 .action-btn {
@@ -232,6 +304,46 @@
   margin: 0;
   color: var(--faint);
   font-size: 13px;
+}
+
+/* ---- model source / backend ---- */
+
+.model-source {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.model-source-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-source-btns {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+
+.model-source-btns .action-btn,
+.be-btns .action-btn {
+  margin-top: 0;
+}
+
+.action-btn:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.be-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 /* ---- adaptive layout ---- */

@@ -2,7 +2,7 @@ import { getAppInfo, getSettings } from './api';
 import { setDebugEnabled } from './core/debug';
 import { byId } from './core/dom';
 import { initTabs } from './core/tabs';
-import { applyTheme, initTheme } from './core/theme';
+import { applyFontScale, applyTheme, initTheme } from './core/theme';
 import { mountChat } from './views/chat';
 import { mountHome } from './views/home';
 import { mountModels } from './views/models';
@@ -19,6 +19,7 @@ initTheme();
 getSettings()
   .then((settings) => {
     applyTheme(settings.theme);
+    applyFontScale(settings.fontScale);
     setDebugEnabled(settings.debug);
   })
   .catch((err) => console.error('Failed to load settings:', err));

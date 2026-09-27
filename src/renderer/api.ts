@@ -13,6 +13,8 @@ export const getSettings = (): Promise<SuperslmSettings> => requireApi().getSett
 export const patchSettings = (patch: Partial<SuperslmSettings>): Promise<SuperslmSettings> =>
   requireApi().patchSettings(patch);
 
+export const pickGguf = (): Promise<string | null> => requireApi().pickGguf();
+
 export const setFullscreen = (on: boolean): Promise<void> => requireApi().setFullscreen(on);
 
 export const openDevTools = (): Promise<void> => requireApi().openDevTools();
@@ -21,3 +23,25 @@ export const listModels = (
   search: string,
   sort: SuperslmModelSort
 ): Promise<SuperslmModelSummary[]> => requireApi().listModels(search, sort);
+
+export const getModelDetail = (id: string): Promise<SuperslmModelDetail> =>
+  requireApi().getModelDetail(id);
+
+export const downloadModel = (
+  id: string,
+  file: string
+): Promise<{ path?: string; cancelled?: boolean }> => requireApi().downloadModel(id, file);
+
+export const onModelProgress = (
+  cb: (p: SuperslmDownloadProgress) => void
+): (() => void) => requireApi().onModelProgress(cb);
+
+export const getBackendStatus = (): Promise<SuperslmBackendStatus> =>
+  requireApi().getBackendStatus();
+
+export const startBackend = (modelPath: string): Promise<SuperslmBackendStatus> =>
+  requireApi().startBackend(modelPath);
+
+export const stopBackend = (): Promise<SuperslmBackendStatus> => requireApi().stopBackend();
+
+export const setZoom = (factor: number): void => requireApi().setZoom(factor);
