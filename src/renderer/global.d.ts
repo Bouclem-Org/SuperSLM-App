@@ -1,7 +1,8 @@
-type SuperslmTheme = 'dark' | 'light';
+type SuperslmTheme = 'dark' | 'light' | 'midnight' | 'sand' | 'forest';
 
 interface SuperslmSettings {
   theme: SuperslmTheme;
+  fullscreen: boolean;
 }
 
 interface SuperslmAppInfo {
@@ -25,6 +26,7 @@ interface SuperslmApi {
   getChangelog: () => Promise<string>;
   getSettings: () => Promise<SuperslmSettings>;
   patchSettings: (patch: Partial<SuperslmSettings>) => Promise<SuperslmSettings>;
+  setFullscreen: (on: boolean) => Promise<void>;
   listModels: (search: string, sort: SuperslmModelSort) => Promise<SuperslmModelSummary[]>;
 }
 

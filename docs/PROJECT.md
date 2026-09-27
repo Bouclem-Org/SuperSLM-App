@@ -4,9 +4,11 @@ A desktop superapp for small language models (SLMs), built with Electron.
 
 ## Status
 
-v0.1.2 — Home tab, Models tab (Hugging Face trending + search), and a Settings
-surface (General, Theme, Changelog) opened from the sidebar gear button.
-Themes persist to `~/.superslm/settings.json`. Renderer is modular: core/api/views.
+v0.1.3 — Home tab, Models tab (Hugging Face liked/downloaded sort + search),
+and a Settings surface (General, Theme, Changelog) opened from the sidebar
+gear button. Five themes + fullscreen persist to `~/.superslm/settings.json`.
+App icon in `assets/` (regenerate via `node scripts/gen-icon.mjs`).
+Renderer is modular: core/api/views.
 
 ## Stack
 
@@ -37,8 +39,8 @@ Themes persist to `~/.superslm/settings.json`. Renderer is modular: core/api/vie
 
 ## User storage
 
-`~/.superslm/settings.json` — `{"theme": "dark" | "light"}`, created on first
-run. Planned: `~/.superslm/models/<org>/<name>/` for downloaded models.
+`~/.superslm/settings.json` — `{"theme": "dark"|"light"|"midnight"|"sand"|"forest", "fullscreen": boolean}`,
+created on first run. Planned: `~/.superslm/models/<org>/<name>/` for downloads.
 
 ## Run
 

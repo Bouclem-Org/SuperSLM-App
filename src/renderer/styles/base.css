@@ -26,6 +26,45 @@
   color-scheme: light;
 }
 
+:root[data-theme='midnight'] {
+  --bg: oklch(0.152 0.014 262);
+  --sidebar: oklch(0.132 0.015 262);
+  --raised: oklch(0.195 0.016 262);
+  --line: oklch(0.252 0.017 262);
+  --text: oklch(0.905 0.012 262);
+  --dim: oklch(0.625 0.014 262);
+  --faint: oklch(0.458 0.014 262);
+  --accent: oklch(0.735 0.095 240);
+  --ok: oklch(0.65 0.12 152);
+  color-scheme: dark;
+}
+
+:root[data-theme='sand'] {
+  --bg: oklch(0.952 0.024 85);
+  --sidebar: oklch(0.93 0.026 85);
+  --raised: oklch(0.892 0.027 85);
+  --line: oklch(0.842 0.026 85);
+  --text: oklch(0.3 0.026 75);
+  --dim: oklch(0.47 0.026 75);
+  --faint: oklch(0.6 0.024 75);
+  --accent: oklch(0.545 0.128 52);
+  --ok: oklch(0.545 0.11 150);
+  color-scheme: light;
+}
+
+:root[data-theme='forest'] {
+  --bg: oklch(0.172 0.021 150);
+  --sidebar: oklch(0.15 0.021 150);
+  --raised: oklch(0.212 0.022 150);
+  --line: oklch(0.272 0.022 150);
+  --text: oklch(0.902 0.016 145);
+  --dim: oklch(0.632 0.016 145);
+  --faint: oklch(0.468 0.016 145);
+  --accent: oklch(0.762 0.1 80);
+  --ok: oklch(0.65 0.12 152);
+  color-scheme: dark;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -253,4 +292,62 @@ body {
   font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.01em;
+}
+
+/* ---- scrollbars ---- */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid var(--bg);
+  border-radius: 999px;
+  background: var(--line);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--faint);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ---- adaptive layout ---- */
+
+@media (max-width: 860px) {
+  .shell {
+    grid-template-columns: 64px 1fr;
+  }
+
+  .brand {
+    justify-content: center;
+    padding: 4px 0 20px;
+  }
+
+  .brand-name,
+  .nav-text,
+  .nav-soon,
+  .foot-status {
+    display: none;
+  }
+
+  .nav-item {
+    justify-content: center;
+    padding: 8px 0;
+  }
+
+  .sidebar-foot {
+    justify-content: center;
+  }
+
+  .tab.is-visible {
+    padding: 0 24px 10vh;
+  }
 }

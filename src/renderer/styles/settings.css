@@ -34,6 +34,41 @@
   display: block;
 }
 
+.section-group {
+  margin-bottom: 30px;
+}
+
+.section-title {
+  margin: 0 0 6px;
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 460px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.setting-row input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.setting-row small {
+  margin-left: auto;
+  color: var(--faint);
+  font-size: 12px;
+}
+
 .about-list {
   display: flex;
   flex-direction: column;
@@ -129,4 +164,35 @@
 
 .changelog li::marker {
   color: var(--faint);
+}
+
+/* ---- adaptive layout ---- */
+
+@media (max-width: 760px) {
+  .settings {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .settings-menu {
+    flex-direction: row;
+    gap: 4px;
+    padding: 12px;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .settings-heading {
+    display: none;
+  }
+
+  .settings-item {
+    width: auto;
+    flex: none;
+  }
+
+  .settings-pane {
+    padding: 24px 20px;
+  }
 }

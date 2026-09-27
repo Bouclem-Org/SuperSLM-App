@@ -13,6 +13,8 @@ export const getSettings = (): Promise<SuperslmSettings> => requireApi().getSett
 export const patchSettings = (patch: Partial<SuperslmSettings>): Promise<SuperslmSettings> =>
   requireApi().patchSettings(patch);
 
+export const setFullscreen = (on: boolean): Promise<void> => requireApi().setFullscreen(on);
+
 export const listModels = (
   search: string,
   sort: SuperslmModelSort

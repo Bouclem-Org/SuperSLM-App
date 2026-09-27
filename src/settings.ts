@@ -2,14 +2,24 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-export type ThemeName = 'dark' | 'light';
+export type ThemeName = 'dark' | 'light' | 'midnight' | 'sand' | 'forest';
 
 export interface SuperslmSettings {
   theme: ThemeName;
+  fullscreen: boolean;
 }
 
-const DEFAULT_SETTINGS: SuperslmSettings = { theme: 'dark' };
-const THEME_VALUES: readonly ThemeName[] = ['dark', 'light'];
+const DEFAULT_SETTINGS: SuperslmSettings = { theme: 'dark', fullscreen: false };
+
+const THEME_VALUES: readonly ThemeName[] = ['dark', 'light', 'midnight', 'sand', 'forest'];
+
+export const THEME_BG: Record<ThemeName, string> = {
+  dark: '#1b1b1e',
+  light: '#f2f0ec',
+  midnight: '#14151c',
+  sand: '#f6f0e4',
+  forest: '#151b17'
+};
 
 const superslmDir = (): string => path.join(os.homedir(), '.superslm');
 const settingsPath = (): string => path.join(superslmDir(), 'settings.json');
@@ -35,6 +45,7 @@ export async function patchSettings(
 ): Promise<SuperslmSettings> {
   const next = await loadSettings();
   if (patch.theme && THEME_VALUES.includes(patch.theme)) next.theme = patch.theme;
+  if (typeof patch.fullscreen === 'boolean') next.fullscreen = patch.fullscreen;
   await ensureStorage();
   await writeFile(settingsPath(), JSON.stringify(next, null, 2) + '\n', 'utf8');
   return next;

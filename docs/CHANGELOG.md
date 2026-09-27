@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.3 - 2026-09-27
+
+- Fixed missing app icon: generated `assets/icon.ico`/`icon.png` (amber mark, pixel "S")
+- Added custom themed scrollbars
+- Added three new themes: Midnight, Sand, Forest
+- Added fullscreen option in Settings > General (applies now and on launch)
+- Made the layout adaptive: icon-only sidebar, horizontal settings menu, and wrapped toolbars on small windows
+
 ## 0.1.2 - 2026-09-27
 
 - Added theme settings (dark/light) under Settings > Theme

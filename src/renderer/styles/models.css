@@ -144,3 +144,26 @@
   margin-right: 4px;
   vertical-align: -2px;
 }
+
+/* ---- adaptive layout ---- */
+
+@media (max-width: 760px) {
+  .models {
+    padding: 24px 20px 0;
+  }
+
+  .models-head {
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .models-tools {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .model-search {
+    flex: 1;
+    min-width: 160px;
+  }
+}

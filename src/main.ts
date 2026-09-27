@@ -2,11 +2,12 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { SuperslmSettings } from './settings';
-import { ensureStorage, loadSettings, patchSettings } from './settings';
+import { ensureStorage, loadSettings, patchSettings, THEME_BG } from './settings';
 
 const HF_API = 'https://huggingface.co/api/models';
 const HF_LIMIT = '24';
 const HF_MAX_SEARCH_LEN = 200;
+const MODEL_SORTS = new Set(['likes', 'downloads']);
 
 interface HfModel {
   id: string;
@@ -17,15 +18,17 @@ interface HfModel {
 }
 
 async function createWindow(): Promise<void> {
-  const { theme } = await loadSettings();
+  const settings = await loadSettings();
   const win = new BrowserWindow({
     width: 1120,
     height: 720,
-    minWidth: 880,
-    minHeight: 560,
+    minWidth: 720,
+    minHeight: 480,
     show: false,
     autoHideMenuBar: true,
-    backgroundColor: theme === 'light' ? '#f2f0ec' : '#1b1b1e',
+    fullscreen: settings.fullscreen,
+    backgroundColor: THEME_BG[settings.theme] ?? THEME_BG.dark,
+    icon: path.join(app.getAppPath(), 'assets', 'icon.ico'),
     title: 'SuperSLM',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -59,7 +62,9 @@ ipcMain.handle('settings:patch', (_event, patch: Partial<SuperslmSettings>) =>
   patchSettings(patch)
 );
 
-const MODEL_SORTS = new Set(['likes', 'downloads']);
+ipcMain.handle('window:fullscreen', (event, flag: unknown) => {
+  BrowserWindow.fromWebContents(event.sender)?.setFullScreen(flag === true);
+});
 
 ipcMain.handle('models:list', async (_event, search: unknown, sort: unknown) => {
   const params = new URLSearchParams({
@@ -85,6 +90,7 @@ ipcMain.handle('models:list', async (_event, search: unknown, sort: unknown) => 
 
 void app.whenReady().then(async () => {
   app.setName('SuperSLM');
+  app.setAppUserModelId('com.superslm.app');
   await ensureStorage();
   await createWindow();
 
