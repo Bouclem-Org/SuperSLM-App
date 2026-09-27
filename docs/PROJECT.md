@@ -4,42 +4,53 @@ A desktop superapp for small language models (SLMs), built with Electron.
 
 ## Status
 
-v0.1.1 — Home tab plus a Settings surface (General + Changelog) opened from a
-gear button in the sidebar footer. The shell is designed to grow additional
-tabs (chat, model management) later.
+v0.1.2 — Home tab, Models tab (Hugging Face trending + search), and a Settings
+surface (General, Theme, Changelog) opened from the sidebar gear button.
+Themes persist to `~/.superslm/settings.json`. Renderer is modular: core/api/views.
 
 ## Stack
 
-- Electron + TypeScript — no framework, no bundler, plain `tsc`
-- `src/main.ts` + `src/preload.ts` compile to `out/` (CommonJS)
-- `src/renderer/app.ts` compiles in place to `src/renderer/app.js` (plain script)
-- `src/renderer/index.html` + `styles.css` are static assets, unchanged by the build
+- Electron + TypeScript, no framework
+- `src/*.ts` (main, preload, settings) compile to `out/` via `tsc` (CommonJS)
+- `src/renderer/**/*.ts` is type-checked by `tsc` then bundled by **esbuild**
+  into `src/renderer/app.js` (IIFE) — ES modules in source, one file served
+- `src/renderer/index.html` is the shell; views render their own markup
 
 ## Architecture
 
-- `src/main.ts` — creates the `BrowserWindow` (sandboxed, context isolation on,
-  node integration off); IPC: `app:info` (versions, platform), `app:changelog`
-  (reads `docs/CHANGELOG.md`)
+- `src/main.ts` — `BrowserWindow` (sandboxed, context isolation on, node
+  integration off); IPC: `app:info`, `app:changelog`, `settings:get`,
+  `settings:patch`, `models:list` (proxies the Hugging Face API)
+- `src/settings.ts` — `~/.superslm/` init, `settings.json` load/patch
 - `src/preload.ts` — exposes `window.superslm` via `contextBridge`
-- `src/renderer/index.html` — app shell: sidebar nav, gear button, tab sections
-  (`tab-home`, `tab-settings`); settings has its own sub-menu
-  (`settings-general`, `settings-changelog`)
-- `src/renderer/app.ts` — tab + settings-menu switching, greeting, app info,
-  changelog fetch and minimal markdown rendering
-- `src/renderer/global.d.ts` — types for `window.superslm`
+- `src/renderer/api.ts` — typed wrappers over `window.superslm`
+- `src/renderer/core/` — `dom.ts` (byId, escapeHtml), `tabs.ts` (router +
+  `onTabOpen` lazy hooks), `markdown.ts`, `theme.ts` (apply + persist)
+- `src/renderer/views/` — `home.ts`, `models.ts`, `settings.ts` — each
+  `mount(root)` renders markup into its tab section and wires its own events
+- `src/renderer/styles/` — `base.css` (theme vars, shell, sidebar, shared),
+  `home.css`, `models.css`, `settings.css`
 - `src/renderer/icons/` — shared SVG icon set (stroke style, 24x24)
-- `src/renderer/styles.css` — dark warm-grey minimal theme (oklch palette)
-- `tsconfig.json` — main/preload; `tsconfig.web.json` — renderer
+- `src/renderer/global.d.ts` — ambient types: `window.superslm`, settings, models
+- `src/renderer/app.ts` — bootstrap: mounts views, initTabs/initTheme, applies
+  saved theme, fills footer version
+
+## User storage
+
+`~/.superslm/settings.json` — `{"theme": "dark" | "light"}`, created on first
+run. Planned: `~/.superslm/models/<org>/<name>/` for downloaded models.
 
 ## Run
 
 ```
 npm install
-npm start    # builds both tsconfigs, then launches electron
+npm start    # tsc (main) + tsc typecheck (renderer) + esbuild bundle + electron
 ```
 
 ## Direction
 
-New tabs: add `<section class="tab" id="tab-name">` + a `data-tab="name"` nav
-button. New settings pages: add a `data-settings="name"` menu item + a matching
-`settings-name` page. The changelog view always reflects `docs/CHANGELOG.md`.
+New tab: add an empty `<section class="tab" id="tab-name">`, a `data-tab="name"`
+nav button, a `views/name.ts` with `mount(root)`, and mount it in `app.ts`.
+New settings page: menu item + page inside `views/settings.ts`. New persisted
+setting: extend `SuperslmSettings` in `src/settings.ts` and patch via
+`settings:patch`.

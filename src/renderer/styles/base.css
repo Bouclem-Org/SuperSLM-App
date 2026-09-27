@@ -10,6 +10,20 @@
   --ok: oklch(0.65 0.12 152);
   --font-display: 'Space Grotesk', 'Segoe UI Variable Display', system-ui, sans-serif;
   --font-body: 'Instrument Sans', 'Segoe UI Variable Text', system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg: oklch(0.962 0.006 70);
+  --sidebar: oklch(0.94 0.007 70);
+  --raised: oklch(0.898 0.009 70);
+  --line: oklch(0.852 0.01 70);
+  --text: oklch(0.275 0.014 70);
+  --dim: oklch(0.455 0.016 70);
+  --faint: oklch(0.598 0.014 70);
+  --accent: oklch(0.575 0.118 68);
+  --ok: oklch(0.545 0.115 150);
+  color-scheme: light;
 }
 
 * {
@@ -160,106 +174,18 @@ body {
   font-size: 11.5px;
 }
 
+.foot-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--ok);
-}
-
-/* ---- content ---- */
-
-.content {
-  overflow: auto;
-}
-
-.tab {
-  display: none;
-  height: 100%;
-}
-
-.tab.is-visible {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 0 8vw 14vh;
-}
-
-.eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0 0 18px;
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.eyebrow::before {
-  content: '';
-  width: 28px;
-  height: 1px;
-  background: var(--accent);
-}
-
-.title {
-  margin: 0 0 20px;
-  font-family: var(--font-display);
-  font-size: clamp(40px, 6vw, 68px);
-  font-weight: 600;
-  letter-spacing: -0.035em;
-  line-height: 0.98;
-}
-
-.lede {
-  max-width: 42ch;
-  margin: 0 0 42px;
-  color: var(--dim);
-  font-size: 15.5px;
-  line-height: 1.65;
-}
-
-.meta {
-  color: var(--faint);
-  font-size: 12.5px;
-  letter-spacing: 0.02em;
-}
-
-/* ---- motion ---- */
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.tab.is-visible > * {
-  animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.tab.is-visible > *:nth-child(2) {
-  animation-delay: 0.07s;
-}
-
-.tab.is-visible > *:nth-child(3) {
-  animation-delay: 0.14s;
-}
-
-.tab.is-visible > *:nth-child(4) {
-  animation-delay: 0.21s;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tab.is-visible > * {
-    animation: none;
-  }
 }
 
 /* ---- icons ---- */
@@ -303,40 +229,22 @@ body {
   outline-offset: -1.5px;
 }
 
-.foot-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
+/* ---- content ---- */
+
+.content {
+  overflow: auto;
 }
 
-/* ---- settings ---- */
-
-.settings {
-  display: grid;
-  grid-template-columns: 200px 1fr;
+.tab {
+  display: none;
   height: 100%;
 }
 
-.settings-menu {
+.tab.is-visible {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 28px 12px;
-  border-right: 1px solid var(--line);
-}
-
-.settings-heading {
-  margin: 0 10px 12px;
-  color: var(--faint);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.settings-pane {
-  padding: 40px 56px;
-  overflow: auto;
+  justify-content: center;
+  padding: 0 8vw 14vh;
 }
 
 .page-title {
@@ -345,72 +253,4 @@ body {
   font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.01em;
-}
-
-.settings-page {
-  display: none;
-}
-
-.settings-page.is-visible {
-  display: block;
-}
-
-.about-list {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  max-width: 460px;
-}
-
-.about-row {
-  display: flex;
-  gap: 24px;
-  padding: 13px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 13.5px;
-}
-
-.about-row dt {
-  width: 110px;
-  flex: none;
-  color: var(--faint);
-}
-
-.about-row dd {
-  margin: 0;
-  color: var(--text);
-}
-
-.changelog {
-  max-width: 560px;
-}
-
-.changelog h3 {
-  margin: 28px 0 10px;
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.changelog h3:first-child {
-  margin-top: 0;
-}
-
-.changelog p {
-  margin: 8px 0;
-  color: var(--dim);
-  font-size: 13.5px;
-  line-height: 1.65;
-}
-
-.changelog ul {
-  margin: 8px 0 16px;
-  padding-left: 18px;
-  color: var(--dim);
-  font-size: 13.5px;
-  line-height: 1.75;
-}
-
-.changelog li::marker {
-  color: var(--faint);
 }

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2 - 2026-09-27
+
+- Added theme settings (dark/light) under Settings > Theme
+- Added `~/.superslm/` user folder with `settings.json` as a generic settings store
+- Enabled Models tab: most liked / most downloaded sorting + search via the Hugging Face API (listing only, no downloads yet)
+- Added theme, download, and heart icons
+- Restructured the renderer into modules (api, core, views) bundled by esbuild; split styles per view
+
 ## 0.1.1 - 2026-09-27
 
 - Added settings menu, opened from a gear button in the bottom-left

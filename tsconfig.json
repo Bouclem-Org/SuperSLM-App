@@ -12,5 +12,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]
   },
-  "include": ["src/main.ts", "src/preload.ts"]
+  "include": ["src/*.ts"]
 }

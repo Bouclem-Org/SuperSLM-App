@@ -1,0 +1,146 @@
+.models {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 40px 48px 0;
+}
+
+.models-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.models-sub {
+  margin: -18px 0 18px;
+  color: var(--faint);
+  font-size: 12.5px;
+}
+
+.models-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sort-toggle {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sort-btn {
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--faint);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.sort-btn:hover:not(.is-active) {
+  color: var(--text);
+}
+
+.sort-btn.is-active {
+  background: var(--raised);
+  color: var(--text);
+}
+
+.sort-btn:focus-visible {
+  outline: 1.5px solid var(--accent);
+  outline-offset: -1.5px;
+}
+
+.model-search {
+  width: 240px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.model-search:focus {
+  border-color: var(--accent);
+}
+
+.model-search::placeholder {
+  color: var(--faint);
+}
+
+.model-status {
+  margin: 0;
+  padding: 16px 0;
+  color: var(--faint);
+  font-size: 13px;
+}
+
+.model-list {
+  flex: 1;
+  margin: 0;
+  padding: 0 0 24px;
+  overflow: auto;
+  list-style: none;
+}
+
+.model-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+}
+
+.model-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.model-name {
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-tag {
+  flex: none;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--faint);
+  font-size: 10.5px;
+}
+
+.model-meta {
+  display: flex;
+  flex: none;
+  gap: 14px;
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.model-meta .icon {
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+  vertical-align: -2px;
+}

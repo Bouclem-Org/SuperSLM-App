@@ -1,0 +1,74 @@
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 18px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.eyebrow::before {
+  content: '';
+  width: 28px;
+  height: 1px;
+  background: var(--accent);
+}
+
+.title {
+  margin: 0 0 20px;
+  font-family: var(--font-display);
+  font-size: clamp(40px, 6vw, 68px);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+}
+
+.lede {
+  max-width: 42ch;
+  margin: 0 0 42px;
+  color: var(--dim);
+  font-size: 15.5px;
+  line-height: 1.65;
+}
+
+.meta {
+  color: var(--faint);
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+#tab-home.is-visible > * {
+  animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+#tab-home.is-visible > *:nth-child(2) {
+  animation-delay: 0.07s;
+}
+
+#tab-home.is-visible > *:nth-child(3) {
+  animation-delay: 0.14s;
+}
+
+#tab-home.is-visible > *:nth-child(4) {
+  animation-delay: 0.21s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #tab-home.is-visible > * {
+    animation: none;
+  }
+}

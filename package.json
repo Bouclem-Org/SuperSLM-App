@@ -1,16 +1,17 @@
 {
   "name": "superslm-app",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "SuperSLM - a desktop home for small language models",
   "main": "out/main.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.web.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.web.json && esbuild src/renderer/app.ts --bundle --format=iife --sourcemap --target=es2022 --outfile=src/renderer/app.js",
     "start": "npm run build && electron ."
   },
   "license": "MIT",
   "devDependencies": {
     "@types/node": "26.6.3",
     "electron": "44.4.5",
+    "esbuild": "0.28.2",
     "typescript": "7.0.2"
   }
 }
