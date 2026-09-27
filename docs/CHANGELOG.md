@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.5 - 2026-09-28
+## 0.1.5 - 2026-09-27
 
 - Added local GGUF picker (Models toolbar + Settings > Models), saved as `modelFile`
 - Added model detail panel: click a model to see metadata, full README description, and GGUF file list with sizes
