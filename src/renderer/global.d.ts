@@ -8,6 +8,7 @@ interface SuperslmSettings {
   modelFile: string;
   confirmDownload: boolean;
   fontScale: number;
+  idleStopMinutes: number;
 }
 
 interface SuperslmAppInfo {
@@ -57,8 +58,26 @@ interface SuperslmDownloadProgress {
 interface SuperslmBackendStatus {
   binary: string | null;
   running: boolean;
+  ready: boolean;
   port: number;
+  model: string;
   lastError: string | null;
+}
+
+interface SuperslmLocalModel {
+  name: string;
+  path: string;
+}
+
+interface SuperslmChatMessage {
+  role: string;
+  content: string;
+}
+
+interface SuperslmInstallProgress {
+  stage: 'fetch' | 'download' | 'extract' | 'done';
+  received: number;
+  total: number;
 }
 
 interface SuperslmApi {
@@ -76,6 +95,10 @@ interface SuperslmApi {
   getBackendStatus: () => Promise<SuperslmBackendStatus>;
   startBackend: (modelPath: string) => Promise<SuperslmBackendStatus>;
   stopBackend: () => Promise<SuperslmBackendStatus>;
+  localModels: () => Promise<SuperslmLocalModel[]>;
+  chatSend: (messages: SuperslmChatMessage[]) => Promise<{ content: string }>;
+  installBackend: () => Promise<{ path: string }>;
+  onBackendProgress: (cb: (p: SuperslmInstallProgress) => void) => () => void;
   setZoom: (factor: number) => void;
 }
 

@@ -3,6 +3,8 @@ import {
   getBackendStatus,
   getChangelog,
   getSettings,
+  installBackend,
+  onBackendProgress,
   openDevTools,
   patchSettings,
   pickGguf,
@@ -20,6 +22,9 @@ const ICON_THEME = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><ci
 const ICON_CHANGELOG = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>`;
 const ICON_DEBUG = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9a4 4 0 1 1 8 0v5a4 4 0 0 1-8 0z"/><path d="M9 5.5a3 3 0 0 1 6 0"/><path d="M8 10 4.5 8.5M8 14H4M8.5 17.5 5 19M16 10l3.5-1.5M16 14h4M15.5 17.5 19 19"/></svg>`;
 const ICON_MODELS = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>`;
+const ICON_BACKEND = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/></svg>`;
+
+const IDLE_OPTIONS = [0, 5, 10, 15];
 
 const fileName = (p: string): string => p.split(/[\\/]/).pop() ?? p;
 
@@ -123,7 +128,8 @@ const refreshBackendStatus = (): void => {
   getBackendStatus()
     .then((s) => {
       byId('be-binary').textContent = s.binary ?? 'not found';
-      byId('be-running').textContent = s.running ? 'yes' : 'no';
+      byId('be-running').textContent = s.running ? (s.ready ? 'yes (ready)' : 'starting…') : 'no';
+      byId('be-model').textContent = s.model ? fileName(s.model) : '—';
       byId('be-port').textContent = String(s.port);
       byId('be-error').textContent = s.lastError ?? '';
     })
@@ -131,6 +137,9 @@ const refreshBackendStatus = (): void => {
 };
 
 const initBackend = (): void => {
+  const installBtn = byId('btn-be-install') as HTMLButtonElement;
+  const installNote = byId('be-install-note');
+
   byId('btn-be-start').addEventListener('click', () => {
     getSettings()
       .then((s) => startBackend(s.modelFile))
@@ -145,6 +154,48 @@ const initBackend = (): void => {
       .then(() => refreshBackendStatus())
       .catch((err: unknown) => console.error('Failed to stop backend:', err));
   });
+
+  installBtn.addEventListener('click', () => {
+    installBtn.disabled = true;
+    installNote.textContent = 'Fetching latest llama.cpp release…';
+    installBackend()
+      .then((res) => {
+        installNote.textContent = `Installed: ${res.path}`;
+      })
+      .catch((err: unknown) => {
+        installNote.textContent = err instanceof Error ? err.message : String(err);
+        reportDebug('backend.install', err);
+      })
+      .finally(() => {
+        installBtn.disabled = false;
+        refreshBackendStatus();
+      });
+  });
+
+  onBackendProgress((p) => {
+    if (p.stage === 'download' && p.total > 0) {
+      installNote.textContent = `Downloading… ${Math.round((p.received / p.total) * 100)}%`;
+    } else if (p.stage === 'extract') {
+      installNote.textContent = 'Extracting…';
+    }
+  });
+
+  document.querySelectorAll<HTMLInputElement>('input[name="idletime"]').forEach((r) => {
+    r.addEventListener('change', () => {
+      patchSettings({ idleStopMinutes: Number(r.value) }).catch((err: unknown) =>
+        console.error('Failed to save idle setting:', err)
+      );
+    });
+  });
+
+  getSettings()
+    .then((s) => {
+      document.querySelectorAll<HTMLInputElement>('input[name="idletime"]').forEach((r) => {
+        r.checked = Number(r.value) === s.idleStopMinutes;
+      });
+    })
+    .catch((err: unknown) => console.error('Failed to load settings:', err));
+
   refreshBackendStatus();
 };
 
@@ -227,6 +278,9 @@ export const mountSettings = (root: HTMLElement): void => {
         </button>
         <button class="settings-item" data-settings="theme" type="button">
           ${ICON_THEME} <span class="nav-text">Theme</span>
+        </button>
+        <button class="settings-item" data-settings="backend" type="button">
+          ${ICON_BACKEND} <span class="nav-text">Backend</span>
         </button>
         <button class="settings-item" data-settings="changelog" type="button">
           ${ICON_CHANGELOG} <span class="nav-text">Changelog</span>
@@ -314,6 +368,41 @@ export const mountSettings = (root: HTMLElement): void => {
           <p class="settings-note">Saved to ~/.superslm/settings.json</p>
         </div>
 
+        <div class="settings-page" id="settings-backend">
+          <h2 class="page-title">Backend</h2>
+
+          <div class="section-group">
+            <h3 class="section-title">llama.cpp</h3>
+            <dl class="about-list">
+              <div class="about-row"><dt>Binary</dt><dd id="be-binary">—</dd></div>
+              <div class="about-row"><dt>Running</dt><dd id="be-running">—</dd></div>
+              <div class="about-row"><dt>Model</dt><dd id="be-model">—</dd></div>
+              <div class="about-row"><dt>Port</dt><dd id="be-port">—</dd></div>
+            </dl>
+            <p class="debug-none" id="be-error"></p>
+            <div class="be-btns">
+              <button class="action-btn" id="btn-be-install" type="button">Install llama.cpp</button>
+              <button class="action-btn" id="btn-be-start" type="button">Start backend</button>
+              <button class="action-btn" id="btn-be-stop" type="button">Stop</button>
+            </div>
+            <p class="settings-note" id="be-install-note"></p>
+          </div>
+
+          <div class="section-group">
+            <h3 class="section-title">Idle shutdown</h3>
+            <div class="theme-options" role="radiogroup" aria-label="Idle shutdown">
+              ${IDLE_OPTIONS.map(
+                (m) => `
+              <label class="theme-option">
+                <input type="radio" name="idletime" value="${m}" />
+                <span>${m === 0 ? 'Never' : `${m} min`}</span>
+                <small>${m === 0 ? 'Keep running' : 'Stop if unused'}</small>
+              </label>`
+              ).join('')}
+            </div>
+          </div>
+        </div>
+
         <div class="settings-page" id="settings-changelog">
           <h2 class="page-title">Changelog</h2>
           <div class="changelog" id="changelog-body"></div>
@@ -339,20 +428,6 @@ export const mountSettings = (root: HTMLElement): void => {
               <small>Detached window</small>
             </label>
             <button class="action-btn" id="btn-devtools" type="button">Open DevTools now</button>
-          </div>
-
-          <div class="section-group">
-            <h3 class="section-title">llama.cpp backend</h3>
-            <dl class="about-list">
-              <div class="about-row"><dt>Binary</dt><dd id="be-binary">—</dd></div>
-              <div class="about-row"><dt>Running</dt><dd id="be-running">—</dd></div>
-              <div class="about-row"><dt>Port</dt><dd id="be-port">—</dd></div>
-            </dl>
-            <p class="debug-none" id="be-error"></p>
-            <div class="be-btns">
-              <button class="action-btn" id="btn-be-start" type="button">Start backend</button>
-              <button class="action-btn" id="btn-be-stop" type="button">Stop</button>
-            </div>
           </div>
 
           <div class="section-group">

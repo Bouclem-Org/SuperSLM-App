@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.6 - 2026-09-27
+
+- Chat works for real: pick a model (downloaded GGUFs + local files) in the Chat tab and send a message — it starts the llama.cpp backend and replies
+- Added Backend settings page: llama-server status, start/stop, one-click install (downloads latest llama.cpp Windows release to `~/.superslm/bin`)
+- Added Idle shutdown setting: backend stops after 5/10/15 min of inactivity, or never
+- Chat keeps conversation history (last 20 messages) per session
+- Backend auto-restarts when the selected model changes
+
 ## 0.1.5 - 2026-09-27
 
 - Added local GGUF picker (Models toolbar + Settings > Models), saved as `modelFile`

@@ -44,4 +44,16 @@ export const startBackend = (modelPath: string): Promise<SuperslmBackendStatus> 
 
 export const stopBackend = (): Promise<SuperslmBackendStatus> => requireApi().stopBackend();
 
+export const localModels = (): Promise<SuperslmLocalModel[]> => requireApi().localModels();
+
+export const chatSend = (
+  messages: SuperslmChatMessage[]
+): Promise<{ content: string }> => requireApi().chatSend(messages);
+
+export const installBackend = (): Promise<{ path: string }> => requireApi().installBackend();
+
+export const onBackendProgress = (
+  cb: (p: SuperslmInstallProgress) => void
+): (() => void) => requireApi().onBackendProgress(cb);
+
 export const setZoom = (factor: number): void => requireApi().setZoom(factor);

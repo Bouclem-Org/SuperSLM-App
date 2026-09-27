@@ -1,12 +1,22 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { execFile } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { PassThrough, Readable } from 'node:stream';
 import type { ReadableStream } from 'node:stream/web';
 import { pipeline } from 'node:stream/promises';
-import { getBackendStatus, startBackend, stopBackend } from './llamacpp';
+import { promisify } from 'node:util';
+import {
+  chatCompletion,
+  getBackendStatus,
+  setIdleMinutes,
+  startBackend,
+  stopBackend,
+  waitReady
+} from './llamacpp';
+import type { ChatMessage } from './llamacpp';
 import type { SuperslmSettings } from './settings';
 import { ensureStorage, loadSettings, patchSettings, THEME_BG } from './settings';
 
@@ -71,9 +81,18 @@ ipcMain.handle('app:changelog', () =>
 
 ipcMain.handle('settings:get', () => loadSettings());
 
-ipcMain.handle('settings:patch', (_event, patch: Partial<SuperslmSettings>) =>
-  patchSettings(patch)
-);
+ipcMain.handle('settings:patch', async (_event, patch: Partial<SuperslmSettings>) => {
+  const next = await patchSettings(patch);
+  if (typeof patch?.idleStopMinutes === 'number') setIdleMinutes(next.idleStopMinutes);
+  if (
+    typeof patch?.modelFile === 'string' &&
+    getBackendStatus().running &&
+    getBackendStatus().model !== next.modelFile
+  ) {
+    stopBackend();
+  }
+  return next;
+});
 
 ipcMain.handle('dialog:pickGguf', async (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
@@ -237,16 +256,120 @@ ipcMain.handle('models:download', async (event, modelId: unknown, file: unknown)
   return { path: dest };
 });
 
+ipcMain.handle('models:local', async () => {
+  const base = path.join(homedir(), '.superslm', 'models');
+  const out: { name: string; path: string }[] = [];
+  try {
+    for (const org of await readdir(base)) {
+      const orgDir = path.join(base, org);
+      if (!(await stat(orgDir)).isDirectory()) continue;
+      for (const name of await readdir(orgDir)) {
+        const dir = path.join(orgDir, name);
+        if (!(await stat(dir)).isDirectory()) continue;
+        for (const file of await readdir(dir)) {
+          if (file.toLowerCase().endsWith('.gguf')) {
+            out.push({ name: `${org}/${name} — ${file}`, path: path.join(dir, file) });
+          }
+        }
+      }
+    }
+  } catch {
+    // no models dir yet
+  }
+  return out;
+});
+
 ipcMain.handle('backend:status', () => getBackendStatus());
 ipcMain.handle('backend:start', (_event, modelPath: unknown) =>
   startBackend(typeof modelPath === 'string' ? modelPath : '')
 );
 ipcMain.handle('backend:stop', () => stopBackend());
 
+ipcMain.handle('backend:chat', async (_event, messages: unknown) => {
+  if (!Array.isArray(messages)) throw new Error('Bad messages');
+  const msgs = messages
+    .filter(
+      (m): m is ChatMessage =>
+        !!m && typeof m.role === 'string' && typeof m.content === 'string'
+    )
+    .slice(-20);
+  if (!msgs.length) throw new Error('Empty conversation');
+  const settings = await loadSettings();
+  if (!settings.modelFile) throw new Error('NO_MODEL: pick a model first');
+  if (!getBackendStatus().running) startBackend(settings.modelFile);
+  await waitReady();
+  return { content: await chatCompletion(msgs) };
+});
+
+const execFileAsync = promisify(execFile);
+
+ipcMain.handle('backend:install', async (event) => {
+  if (process.platform !== 'win32' || process.arch !== 'x64') {
+    throw new Error(
+      'Auto-install supports Windows x64 only — place llama-server in ~/.superslm/bin manually'
+    );
+  }
+  const send = (stage: string, received = 0, total = 0): void => {
+    event.sender.send('backend:progress', { stage, received, total });
+  };
+
+  send('fetch');
+  const releases = (await (
+    await fetch('https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=10', {
+      headers: { 'User-Agent': 'superslm' }
+    })
+  ).json()) as { assets?: { name: string; browser_download_url: string }[] }[];
+  let asset: { name: string; browser_download_url: string } | undefined;
+  for (const rel of releases) {
+    const assets = rel.assets ?? [];
+    asset =
+      assets.find((a) => /bin-win-cpu-x64\.zip$/i.test(a.name)) ??
+      assets.find((a) => /bin-win-.*x64.*\.zip$/i.test(a.name));
+    if (asset) break;
+  }
+  if (!asset) throw new Error('No Windows build found in recent llama.cpp releases');
+
+  const binDir = path.join(homedir(), '.superslm', 'bin');
+  await mkdir(binDir, { recursive: true });
+  const zipPath = path.join(binDir, 'llamacpp.zip');
+
+  const res = await fetch(asset.browser_download_url);
+  if (!res.ok || !res.body) throw new Error(`Download failed: ${res.status}`);
+  const total = Number(res.headers.get('content-length') ?? 0);
+  let received = 0;
+  let lastSent = 0;
+  const counter = new PassThrough();
+  counter.on('data', (chunk: Buffer) => {
+    received += chunk.length;
+    if (received - lastSent >= PROGRESS_STEP) {
+      lastSent = received;
+      send('download', received, total);
+    }
+  });
+  await pipeline(
+    Readable.fromWeb(res.body as unknown as ReadableStream),
+    counter,
+    createWriteStream(zipPath)
+  );
+
+  send('extract');
+  await execFileAsync('powershell', [
+    '-NoProfile',
+    '-Command',
+    `Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${binDir}' -Force`
+  ]);
+  await rm(zipPath, { force: true });
+  const status = getBackendStatus();
+  send('done');
+  if (!status.binary) throw new Error('Extracted, but llama-server was not found');
+  return { path: status.binary };
+});
+
 void app.whenReady().then(async () => {
   app.setName('SuperSLM');
   app.setAppUserModelId('com.superslm.app');
   await ensureStorage();
+  setIdleMinutes((await loadSettings()).idleStopMinutes);
   await createWindow();
 
   app.on('activate', () => {

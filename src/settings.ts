@@ -12,6 +12,7 @@ export interface SuperslmSettings {
   modelFile: string;
   confirmDownload: boolean;
   fontScale: number;
+  idleStopMinutes: number;
 }
 
 const DEFAULT_SETTINGS: SuperslmSettings = {
@@ -21,7 +22,8 @@ const DEFAULT_SETTINGS: SuperslmSettings = {
   devtools: false,
   modelFile: '',
   confirmDownload: true,
-  fontScale: 1
+  fontScale: 1,
+  idleStopMinutes: 10
 };
 
 const THEME_VALUES: readonly ThemeName[] = ['dark', 'light', 'midnight', 'sand', 'forest'];
@@ -71,6 +73,14 @@ export async function patchSettings(
     patch.fontScale <= 1.5
   ) {
     next.fontScale = Math.round(patch.fontScale * 100) / 100;
+  }
+  if (
+    typeof patch.idleStopMinutes === 'number' &&
+    Number.isInteger(patch.idleStopMinutes) &&
+    patch.idleStopMinutes >= 0 &&
+    patch.idleStopMinutes <= 120
+  ) {
+    next.idleStopMinutes = patch.idleStopMinutes;
   }
   await ensureStorage();
   await writeFile(settingsPath(), JSON.stringify(next, null, 2) + '\n', 'utf8');

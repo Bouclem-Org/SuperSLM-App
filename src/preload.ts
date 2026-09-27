@@ -20,9 +20,18 @@ contextBridge.exposeInMainWorld('superslm', {
     ipcRenderer.on('models:progress', listener);
     return () => ipcRenderer.removeListener('models:progress', listener);
   },
+  localModels: (): Promise<unknown> => ipcRenderer.invoke('models:local'),
   getBackendStatus: (): Promise<unknown> => ipcRenderer.invoke('backend:status'),
   startBackend: (modelPath: string): Promise<unknown> =>
     ipcRenderer.invoke('backend:start', modelPath),
   stopBackend: (): Promise<unknown> => ipcRenderer.invoke('backend:stop'),
+  chatSend: (messages: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('backend:chat', messages),
+  installBackend: (): Promise<unknown> => ipcRenderer.invoke('backend:install'),
+  onBackendProgress: (cb: (p: unknown) => void) => {
+    const listener = (_event: unknown, payload: unknown): void => cb(payload);
+    ipcRenderer.on('backend:progress', listener);
+    return () => ipcRenderer.removeListener('backend:progress', listener);
+  },
   setZoom: (factor: number): void => webFrame.setZoomFactor(factor)
 });
