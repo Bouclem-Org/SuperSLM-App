@@ -211,6 +211,37 @@
   font-size: 13px;
 }
 
+.dl-quant {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.detail-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.detail-copy {
+  padding: 5px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+}
+
+.detail-copy:hover {
+  background: var(--raised);
+  color: var(--text);
+}
+
 .dl-name {
   flex: 1;
   overflow: hidden;
@@ -255,7 +286,8 @@
 }
 
 .detail-desc {
-  max-width: 640px;
+  max-width: 760px;
+  margin-inline: auto;
 }
 
 .detail-more {

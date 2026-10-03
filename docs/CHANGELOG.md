@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.10 - 2026-10-03
+
+- Downloads actually show: model detail now lists GGUFs in subfolders AND the companion `*-GGUF` repo (was empty for most models)
+- Quant badges on downloadable files (Q4_K_M, Q8_0, IQ4_XS, F16…)
+- LaTeX math in replies & descriptions renders as real formulas via KaTeX ($…$, $$…$$, \(…\), \[…\])
+- PDF links (`.pdf`, arXiv `/pdf/`) open in your browser
+- Copy button on every code block; copy button next to the model name in detail
+- Model description is centered (760px column)
+- Fixed weird descriptions: 4-space indented code blocks and `~~~` fences now render as code
+- New `src/backend/` folder — future home for Python-powered features (finetune & co)
+- All UI icons now load from `src/renderer/icons/` (esbuild text imports) instead of duplicated inline SVGs; app icon moved to root `icons/`
+- MIT license (Sqersters)
+
 ## 0.1.9 - 2026-10-03
 
 - Assistant replies render markdown (bold, lists, code, tables) instead of raw `**`

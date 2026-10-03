@@ -4,20 +4,22 @@ import {
   chatsSave,
   getSettings,
   localModels,
+  openExternal,
   patchSettings
 } from '../api';
 import { refreshSideChats, setActiveSideChat, setChatOpener, setNewChatHandler } from '../core/chats';
 import { isDebugEnabled, reportDebug } from '../core/debug';
 import { byId, escapeHtml } from '../core/dom';
 import { fileName } from '../core/format';
-import { renderMarkdown } from '../core/markdown';
+import { icon } from '../core/icons';
+import { initMdClicks, renderMarkdown, renderMath } from '../core/markdown';
 import { mountSelect } from '../core/select';
 import { onTabOpen } from '../core/tabs';
 
-const ICON_SEND = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
-const ICON_COPY = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
-const ICON_RETRY = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>`;
-const ICON_EDIT = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+const ICON_SEND = icon('send');
+const ICON_COPY = icon('copy');
+const ICON_RETRY = icon('retry');
+const ICON_EDIT = icon('edit');
 
 interface MsgStat {
   tps?: number;
@@ -98,6 +100,9 @@ export const mountChat = (root: HTMLElement): void => {
   const form = byId('chat-form') as HTMLFormElement;
   const input = byId('chat-input') as HTMLInputElement;
   const modelSel = mountSelect(byId('chat-model-sel'), 'Pick a model…');
+  initMdClicks(scroll, (url) =>
+    void openExternal(url).catch((err: unknown) => reportDebug('chat.link', err))
+  );
 
   let history: UIMsg[] = [];
   let chatId = newChatId();
@@ -174,6 +179,7 @@ export const mountChat = (root: HTMLElement): void => {
       return;
     }
     history.forEach((m, i) => scroll.appendChild(msgEl(m, i)));
+    renderMath(scroll);
     if (toBottom || atBottom) scroll.scrollTop = scroll.scrollHeight;
   };
 

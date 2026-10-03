@@ -29,8 +29,13 @@ export const getModelDetail = (id: string): Promise<SuperslmModelDetail> =>
 
 export const downloadModel = (
   id: string,
+  repo: string,
   file: string
-): Promise<{ path?: string; cancelled?: boolean }> => requireApi().downloadModel(id, file);
+): Promise<{ path?: string; cancelled?: boolean }> =>
+  requireApi().downloadModel(id, repo, file);
+
+export const openExternal = (url: string): Promise<unknown> =>
+  requireApi().openExternal(url);
 
 export const onModelProgress = (
   cb: (p: SuperslmDownloadProgress) => void

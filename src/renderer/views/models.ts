@@ -3,17 +3,19 @@ import {
   getModelDetail,
   listModels,
   onModelProgress,
+  openExternal,
   pickGguf
 } from '../api';
 import { reportDebug } from '../core/debug';
 import { byId, escapeHtml } from '../core/dom';
 import { fmtBytes } from '../core/format';
-import { renderMarkdown } from '../core/markdown';
+import { icon } from '../core/icons';
+import { initMdClicks, renderMarkdown, renderMath } from '../core/markdown';
 import { onTabOpen } from '../core/tabs';
 
-const ICON_DOWNLOAD = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M4 20h16"/></svg>`;
-const ICON_FILE = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>`;
-const ICON_HEART = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5C6 16.5 3 13 3 9.5A4.5 4.5 0 0 1 7.5 5c1.8 0 3.4 1 4.5 2.6A5.2 5.2 0 0 1 16.5 5 4.5 4.5 0 0 1 21 9.5c0 3.5-3 7-9 11z"/></svg>`;
+const ICON_DOWNLOAD = icon('download');
+const ICON_FILE = icon('file');
+const ICON_HEART = icon('heart');
 
 const compact = new Intl.NumberFormat('en', { notation: 'compact' });
 const DEBOUNCE_MS = 300;
@@ -30,10 +32,21 @@ const cleanReadme = (md: string): string =>
     .replace(/\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)/g, '')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
     .replace(/<[^>]+>/g, '')
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]*)\]\(([^)]*)\)/g, (m, t: string, u: string) =>
+      /\.pdf([?#]|$)|arxiv\.org\/pdf\//i.test(u) ? m : t
+    )
     .replace(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+
+const ICON_COPY = icon('copy');
+
+const quantOf = (name: string): string | null => {
+  const m = /(?:^|[.\-_])(IQ\d_XS|IQ\d|Q\d(?:_K)?_(?:XL|L|M|S|XS)|Q\d_0|Q\d|F16|F32|BF16|FP16|FP8|UD-Q\d[_A-Z]*)(?=[.\-_]|$)/i.exec(
+    name
+  );
+  return m ? m[1].toUpperCase() : null;
+};
 
 export const mountModels = (root: HTMLElement): void => {
   root.innerHTML = `
@@ -68,6 +81,9 @@ export const mountModels = (root: HTMLElement): void => {
   const status = byId<HTMLParagraphElement>('model-status');
   const detail = byId<HTMLDivElement>('model-detail');
   const localBtn = byId<HTMLButtonElement>('btn-local-gguf');
+  initMdClicks(detail, (url) =>
+    void openExternal(url).catch((err: unknown) => reportDebug('models.link', err))
+  );
   const sortBtns = Array.from(root.querySelectorAll<HTMLButtonElement>('.sort-btn'));
 
   let sort: SuperslmModelSort = 'likes';
@@ -123,7 +139,12 @@ export const mountModels = (root: HTMLElement): void => {
     timer = window.setTimeout(() => void load(), DEBOUNCE_MS);
   };
 
-  const wireDownload = (btn: HTMLButtonElement, modelId: string, file: string): void => {
+  const wireDownload = (
+    btn: HTMLButtonElement,
+    modelId: string,
+    repo: string,
+    file: string
+  ): void => {
     btn.addEventListener('click', () => {
       const row = btn.closest('.dl-row');
       if (!row) return;
@@ -133,7 +154,7 @@ export const mountModels = (root: HTMLElement): void => {
       bar.className = 'dl-progress';
       bar.innerHTML = `<div class="dl-fill"></div><span class="dl-pct">…</span>`;
       row.appendChild(bar);
-      downloadModel(modelId, file)
+      downloadModel(modelId, repo, file)
         .then((res) => {
           if (res.cancelled) {
             bar.remove();
@@ -151,7 +172,10 @@ export const mountModels = (root: HTMLElement): void => {
   const renderDetail = (d: SuperslmModelDetail): void => {
     detail.innerHTML = `
       <button class="detail-back" id="detail-back" type="button">← Back to list</button>
-      <h2 class="page-title">${escapeHtml(d.id)}</h2>
+      <h2 class="page-title detail-title">
+        ${escapeHtml(d.id)}
+        <button class="icon-btn detail-copy" id="detail-copy" type="button" aria-label="Copy model name" title="Copy model name">${ICON_COPY}</button>
+      </h2>
       <div class="about-list">
         <div class="about-row"><dt>Author</dt><dd>${escapeHtml(d.author)}</dd></div>
         <div class="about-row"><dt>Task</dt><dd>${escapeHtml(d.pipeline || '—')}</dd></div>
@@ -161,23 +185,31 @@ export const mountModels = (root: HTMLElement): void => {
         <div class="about-row"><dt>Updated</dt><dd>${fmtDate(d.updated)}</dd></div>
       </div>
       ${d.files.length ? `
-        <h3 class="section-title">GGUF files</h3>
+        <h3 class="section-title">GGUF files${d.files.some((f) => f.repo !== d.id) ? ` <small>(includes ${escapeHtml(d.id)}-GGUF)</small>` : ''}</h3>
         <ul class="dl-list">
-          ${d.files.map((f) => `
+          ${d.files.map((f) => {
+            const q = quantOf(f.name);
+            return `
             <li class="dl-row" data-file="${escapeHtml(f.name)}">
-              <span class="dl-name">${escapeHtml(f.name)}</span>
+              ${q ? `<span class="dl-quant">${escapeHtml(q)}</span>` : ''}
+              <span class="dl-name" title="${escapeHtml(f.repo === d.id ? f.name : `${f.repo}/${f.name}`)}">${escapeHtml(f.name)}</span>
               <span class="dl-size">${fmtBytes(f.size)}</span>
-              <button class="action-btn dl-btn" type="button" data-dl="${escapeHtml(f.name)}">Download</button>
-            </li>`).join('')}
+              <button class="action-btn dl-btn" type="button" data-repo="${escapeHtml(f.repo)}" data-dl="${escapeHtml(f.name)}">Download</button>
+            </li>`;
+          }).join('')}
         </ul>` : ''}
       <h3 class="section-title">Description</h3>
       <div class="changelog detail-desc">${d.readme ? renderMarkdown(cleanReadme(d.readme)) : '<p>No description available.</p>'}</div>
       ${d.readmeTruncated ? '<p class="detail-more">Showing the beginning of the model card — full text on huggingface.co.</p>' : ''}`;
 
     byId<HTMLButtonElement>('detail-back').addEventListener('click', closeDetail);
-    detail.querySelectorAll<HTMLButtonElement>('.dl-btn').forEach((btn) => {
-      wireDownload(btn, d.id, btn.dataset.dl ?? '');
+    byId<HTMLButtonElement>('detail-copy').addEventListener('click', () => {
+      void navigator.clipboard.writeText(d.id);
     });
+    detail.querySelectorAll<HTMLButtonElement>('.dl-btn').forEach((btn) => {
+      wireDownload(btn, d.id, btn.dataset.repo ?? d.id, btn.dataset.dl ?? '');
+    });
+    renderMath(detail);
     detail.scrollTop = 0;
   };
 

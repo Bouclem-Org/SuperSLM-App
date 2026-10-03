@@ -14,14 +14,9 @@ import {
 import { getDebugEntries, reportDebug, setDebugEnabled } from '../core/debug';
 import { byId, escapeHtml } from '../core/dom';
 import { fileName } from '../core/format';
+import { icon } from '../core/icons';
 import { renderMarkdown } from '../core/markdown';
 import { onTabOpen } from '../core/tabs';
-
-const ICON_GENERAL = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`;
-const ICON_THEME = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/></svg>`;
-const ICON_CHANGELOG = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>`;
-const ICON_DEBUG = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9a4 4 0 1 1 8 0v5a4 4 0 0 1-8 0z"/><path d="M9 5.5a3 3 0 0 1 6 0"/><path d="M8 10 4.5 8.5M8 14H4M8.5 17.5 5 19M16 10l3.5-1.5M16 14h4M15.5 17.5 19 19"/></svg>`;
-const ICON_BACKEND = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/></svg>`;
 
 const IDLE_OPTIONS = [0, 5, 10, 15];
 
@@ -254,19 +249,19 @@ export const mountSettings = (root: HTMLElement): void => {
       <nav class="settings-menu" aria-label="Settings">
         <p class="settings-heading">Settings</p>
         <button class="settings-item is-active" data-settings="general" type="button">
-          ${ICON_GENERAL} <span class="nav-text">General</span>
+          ${icon('desktop')} <span class="nav-text">General</span>
         </button>
         <button class="settings-item" data-settings="theme" type="button">
-          ${ICON_THEME} <span class="nav-text">Theme</span>
+          ${icon('theme')} <span class="nav-text">Theme</span>
         </button>
         <button class="settings-item" data-settings="backend" type="button">
-          ${ICON_BACKEND} <span class="nav-text">Backend</span>
+          ${icon('backend')} <span class="nav-text">Backend</span>
         </button>
         <button class="settings-item" data-settings="changelog" type="button">
-          ${ICON_CHANGELOG} <span class="nav-text">Changelog</span>
+          ${icon('changelog')} <span class="nav-text">Changelog</span>
         </button>
         <button class="settings-item" data-settings="debug" type="button">
-          ${ICON_DEBUG} <span class="nav-text">Debug</span>
+          ${icon('bug')} <span class="nav-text">Debug</span>
         </button>
       </nav>
 

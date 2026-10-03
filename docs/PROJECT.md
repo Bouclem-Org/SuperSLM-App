@@ -12,7 +12,8 @@ menu), and Settings (General, Backend, Theme, Changelog, Debug) via the
 sidebar gear. Five themes, text size, fullscreen, debug, devtools,
 modelFile, localFiles, confirmDownload, idleStopMinutes and backendBuild
 persist to `~/.superslm/settings.json`. App icon in
-`assets/` (regenerate via `node scripts/gen-icon.mjs`). `src/llamacpp.ts`
+`icons/` (regenerate via `node scripts/gen-icon.mjs`). `src/backend/` holds the
+Python side for future features. `src/llamacpp.ts`
 manages `llama-server` on port 8391: spawn, /health polling, OpenAI-style
 /v1/chat/completions, idle auto-stop, status/start/stop IPC. Install
 button pulls the latest llama.cpp Windows release from GitHub into

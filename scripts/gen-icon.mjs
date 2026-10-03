@@ -1,4 +1,4 @@
-// Generates assets/icon.png + icon.ico (PNG-in-ICO, Vista+).
+// Generates icons/icon.png + icon.ico (PNG-in-ICO, Vista+).
 // Amber rounded square with a pixel-art "S" — no dependencies, Node zlib only.
 import { deflateSync } from 'node:zlib';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -92,7 +92,7 @@ icoEntry.writeUInt32LE(png.length, 8);
 icoEntry.writeUInt32LE(22, 12);
 const ico = Buffer.concat([icoHeader, icoEntry, png]);
 
-mkdirSync('assets', { recursive: true });
-writeFileSync('assets/icon.png', png);
-writeFileSync('assets/icon.ico', ico);
+mkdirSync('icons', { recursive: true });
+writeFileSync('icons/icon.png', png);
+writeFileSync('icons/icon.ico', ico);
 console.log(`icon.png ${png.length}b, icon.ico ${ico.length}b`);

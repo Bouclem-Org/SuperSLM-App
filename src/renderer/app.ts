@@ -2,6 +2,7 @@ import { getAppInfo, getSettings } from './api';
 import { setDebugEnabled } from './core/debug';
 import { initSideChats } from './core/chats';
 import { byId } from './core/dom';
+import { fillIcons } from './core/icons';
 import { initTabs } from './core/tabs';
 import { applyFontScale, applyTheme, initTheme } from './core/theme';
 import { mountChat } from './views/chat';
@@ -20,6 +21,7 @@ mountSettings(byId('tab-settings'));
 
 initTabs();
 initTheme();
+fillIcons(document.body);
 initSideChats();
 
 getSettings()

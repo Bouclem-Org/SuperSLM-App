@@ -13,8 +13,10 @@ contextBridge.exposeInMainWorld('superslm', {
   listModels: (search: string, sort: string): Promise<unknown> =>
     ipcRenderer.invoke('models:list', search, sort),
   getModelDetail: (id: string): Promise<unknown> => ipcRenderer.invoke('models:detail', id),
-  downloadModel: (id: string, file: string): Promise<unknown> =>
-    ipcRenderer.invoke('models:download', id, file),
+  downloadModel: (id: string, repo: string, file: string): Promise<unknown> =>
+    ipcRenderer.invoke('models:download', id, repo, file),
+  openExternal: (url: string): Promise<unknown> =>
+    ipcRenderer.invoke('app:openExternal', url),
   onModelProgress: (cb: (p: unknown) => void) => {
     const listener = (_event: unknown, payload: unknown): void => cb(payload);
     ipcRenderer.on('models:progress', listener);

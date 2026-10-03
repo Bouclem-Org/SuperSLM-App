@@ -333,6 +333,55 @@ body {
   font-size: 12px;
 }
 
+/* ---- markdown shared ---- */
+
+.md-code {
+  position: relative;
+}
+
+.code-copy {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--raised);
+  color: var(--faint);
+  font-family: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+.md-code:hover .code-copy,
+.code-copy:focus-visible {
+  opacity: 1;
+}
+
+.code-copy:hover {
+  color: var(--text);
+}
+
+.md-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.md-math {
+  display: inline-block;
+}
+
+.md-math[data-display='1'] {
+  display: block;
+  margin: 8px 0;
+  overflow-x: auto;
+  text-align: center;
+}
+
 .nav-soon {
   margin-left: auto;
   padding: 2px 7px;
@@ -431,6 +480,15 @@ body {
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+[data-ico] {
+  display: inline-flex;
+}
+
+.code-copy .icon {
+  width: 12px;
+  height: 12px;
 }
 
 .icon-btn {

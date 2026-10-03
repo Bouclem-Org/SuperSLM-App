@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { execFile } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
@@ -50,7 +50,7 @@ async function createWindow(): Promise<void> {
     autoHideMenuBar: true,
     fullscreen: settings.fullscreen,
     backgroundColor: THEME_BG[settings.theme] ?? THEME_BG.dark,
-    icon: path.join(app.getAppPath(), 'assets', 'icon.ico'),
+    icon: path.join(app.getAppPath(), 'icons', 'icon.ico'),
     title: 'LM SuperApp',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -168,19 +168,32 @@ ipcMain.handle('models:detail', async (_event, id: unknown) => {
 
   const ggufs = (m.siblings ?? [])
     .map((s) => s.rfilename)
-    .filter((f) => f.toLowerCase().endsWith('.gguf'))
-    .slice(0, 10);
+    .filter((f) => f.toLowerCase().endsWith('.gguf'));
+
+  try {
+    const sibling = (await hfJson(`${HF_API}/${id}-GGUF`)) as HfModel;
+    for (const s of sibling.siblings ?? []) {
+      if (s.rfilename.toLowerCase().endsWith('.gguf')) {
+        ggufs.push(`${id}-GGUF:${s.rfilename}`);
+      }
+    }
+  } catch {
+    // no companion -GGUF repo
+  }
 
   const files = await Promise.all(
-    ggufs.map(async (name) => {
+    ggufs.slice(0, 40).map(async (name) => {
+      const repo = name.startsWith(`${id}-GGUF:`) ? `${id}-GGUF` : id;
+      const file = name.startsWith(`${id}-GGUF:`) ? name.slice(id.length + 6) : name;
       try {
-        const head = await fetch(`https://huggingface.co/${id}/resolve/main/${name}`, {
-          method: 'HEAD'
-        });
+        const head = await fetch(
+          `https://huggingface.co/${repo}/resolve/main/${file}`,
+          { method: 'HEAD' }
+        );
         const size = Number(head.headers.get('x-linked-size') ?? head.headers.get('content-length'));
-        return { name, size: Number.isFinite(size) && size > 0 ? size : null };
+        return { repo, name: file, size: Number.isFinite(size) && size > 0 ? size : null };
       } catch {
-        return { name, size: null };
+        return { repo, name: file, size: null };
       }
     })
   );
@@ -200,18 +213,21 @@ ipcMain.handle('models:detail', async (_event, id: unknown) => {
   };
 });
 
-ipcMain.handle('models:download', async (event, modelId: unknown, file: unknown) => {
+ipcMain.handle('models:download', async (event, modelId: unknown, repo: unknown, file: unknown) => {
   if (
     typeof modelId !== 'string' ||
     !modelId.includes('/') ||
     modelId.includes('..') ||
+    typeof repo !== 'string' ||
+    (repo !== modelId && repo !== `${modelId}-GGUF`) ||
     typeof file !== 'string' ||
     file.includes('..') ||
-    file.includes('/')
+    file.startsWith('/')
   ) {
     throw new Error('Bad download request');
   }
 
+  const base = path.basename(file);
   const settings = await loadSettings();
   const win = BrowserWindow.fromWebContents(event.sender);
   if (settings.confirmDownload && win) {
@@ -221,17 +237,17 @@ ipcMain.handle('models:download', async (event, modelId: unknown, file: unknown)
       defaultId: 1,
       cancelId: 0,
       title: 'Download model',
-      message: `Download ${file}?`,
-      detail: `${modelId} → ~/.superslm/models/${modelId}/`
+      message: `Download ${base}?`,
+      detail: `${repo} → ~/.superslm/models/${modelId}/`
     });
     if (response !== 1) return { cancelled: true };
   }
 
   const destDir = path.join(homedir(), '.superslm', 'models', modelId);
   await mkdir(destDir, { recursive: true });
-  const dest = path.join(destDir, file);
+  const dest = path.join(destDir, base);
 
-  const res = await fetch(`https://huggingface.co/${modelId}/resolve/main/${file}`);
+  const res = await fetch(`https://huggingface.co/${repo}/resolve/main/${file}`);
   if (!res.ok || !res.body) throw new Error(`Download failed: ${res.status}`);
   const total = Number(res.headers.get('x-linked-size') ?? res.headers.get('content-length') ?? 0);
 
@@ -258,6 +274,13 @@ ipcMain.handle('models:download', async (event, modelId: unknown, file: unknown)
   }
   event.sender.send('models:progress', { file, received, total, done: true, path: dest });
   return { path: dest };
+});
+
+ipcMain.handle('app:openExternal', (_e, url: unknown) => {
+  if (typeof url !== 'string' || !/^https:\/\/[\w.-]+/.test(url)) {
+    throw new Error('Bad URL');
+  }
+  return shell.openExternal(url);
 });
 
 ipcMain.handle('models:local', async () => {

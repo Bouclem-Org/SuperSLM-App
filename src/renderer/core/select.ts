@@ -1,4 +1,5 @@
 import { escapeHtml } from './dom';
+import { icon } from './icons';
 
 export interface SelectOption {
   value: string;
@@ -19,7 +20,7 @@ export const mountSelect = (host: HTMLElement, placeholder: string): SelectHandl
   host.innerHTML = `
     <button class="csel-btn" type="button">
       <span class="csel-label">${escapeHtml(placeholder)}</span>
-      <svg class="icon csel-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      ${icon('caret').replace('class="icon"', 'class="icon csel-caret"')}
     </button>
     <div class="csel-menu" hidden></div>`;
 

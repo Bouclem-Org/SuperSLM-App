@@ -32,6 +32,7 @@ interface SuperslmModelSummary {
 }
 
 interface SuperslmModelFile {
+  repo: string;
   name: string;
   size: number | null;
 }
@@ -110,7 +111,12 @@ interface SuperslmApi {
   openDevTools: () => Promise<void>;
   listModels: (search: string, sort: SuperslmModelSort) => Promise<SuperslmModelSummary[]>;
   getModelDetail: (id: string) => Promise<SuperslmModelDetail>;
-  downloadModel: (id: string, file: string) => Promise<{ path?: string; cancelled?: boolean }>;
+  downloadModel: (
+    id: string,
+    repo: string,
+    file: string
+  ) => Promise<{ path?: string; cancelled?: boolean }>;
+  openExternal: (url: string) => Promise<unknown>;
   onModelProgress: (cb: (p: SuperslmDownloadProgress) => void) => () => void;
   getBackendStatus: () => Promise<SuperslmBackendStatus>;
   startBackend: (modelPath: string) => Promise<SuperslmBackendStatus>;
