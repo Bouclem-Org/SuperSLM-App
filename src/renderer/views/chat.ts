@@ -1,16 +1,35 @@
-import { chatSend, getSettings, localModels, patchSettings } from '../api';
+import {
+  chatSend,
+  chatsList,
+  chatsLoad,
+  chatsSave,
+  getSettings,
+  localModels,
+  patchSettings
+} from '../api';
 import { isDebugEnabled, reportDebug } from '../core/debug';
 import { byId, escapeHtml } from '../core/dom';
 import { fileName } from '../core/format';
+import { mountSelect } from '../core/select';
 import { onTabOpen } from '../core/tabs';
 
 const ICON_SEND = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
+
+const newChatId = (): string => `c${Date.now().toString(36)}`;
+
+const chatTitle = (messages: SuperslmChatMessage[]): string =>
+  messages.find((m) => m.role === 'user')?.content.slice(0, 60) ?? 'Chat';
+
+const fmtDay = (ts: number): string =>
+  ts ? new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
 
 export const mountChat = (root: HTMLElement): void => {
   root.innerHTML = `
     <div class="chat">
       <div class="chat-top">
-        <select id="chat-model-sel" class="chat-model-sel" aria-label="Model"></select>
+        <div id="chat-model-sel"></div>
+        <div id="chat-history-sel"></div>
+        <button class="action-btn" id="chat-new" type="button">New chat</button>
       </div>
       <div class="chat-scroll" id="chat-scroll">
         <p class="chat-empty" id="chat-empty">Pick a model above, then send a message.</p>
@@ -28,39 +47,15 @@ export const mountChat = (root: HTMLElement): void => {
     </div>`;
 
   const scroll = byId('chat-scroll');
-  const empty = byId('chat-empty');
+  let empty = byId('chat-empty');
   const form = byId('chat-form') as HTMLFormElement;
   const input = byId('chat-input') as HTMLInputElement;
-  const sel = byId('chat-model-sel') as HTMLSelectElement;
+  const modelSel = mountSelect(byId('chat-model-sel'), 'Pick a model…');
+  const histSel = mountSelect(byId('chat-history-sel'), 'History…');
 
-  const history: SuperslmChatMessage[] = [];
+  let history: SuperslmChatMessage[] = [];
+  let chatId = newChatId();
   let pending = false;
-
-  const refreshModels = (): void => {
-    void Promise.all([localModels(), getSettings()])
-      .then(([list, s]) => {
-        const picked = s.localFiles
-          .filter((p) => !list.some((m) => m.path === p))
-          .map(
-            (p) =>
-              `<option value="${escapeHtml(p)}">${escapeHtml(fileName(p))} (file)</option>`
-          );
-        sel.innerHTML =
-          `<option value="" disabled${s.modelFile ? '' : ' selected'}>Pick a model…</option>` +
-          picked.join('') +
-          list
-            .map((m) => `<option value="${escapeHtml(m.path)}">${escapeHtml(m.name)}</option>`)
-            .join('');
-        if (s.modelFile) sel.value = s.modelFile;
-      })
-      .catch((err: unknown) => console.error('Failed to load models:', err));
-  };
-
-  sel.addEventListener('change', () => {
-    patchSettings({ modelFile: sel.value }).catch((err: unknown) =>
-      console.error('Failed to save model:', err)
-    );
-  });
 
   const addMsg = (kind: string, html: string): HTMLElement => {
     empty.hidden = true;
@@ -72,6 +67,68 @@ export const mountChat = (root: HTMLElement): void => {
     return div;
   };
 
+  const renderAll = (): void => {
+    scroll.innerHTML = '';
+    if (!history.length) {
+      const p = document.createElement('p');
+      p.className = 'chat-empty';
+      p.id = 'chat-empty';
+      p.textContent = 'Pick a model above, then send a message.';
+      scroll.appendChild(p);
+      empty = p;
+      return;
+    }
+    history.forEach((m) => addMsg(m.role, escapeHtml(m.content)));
+  };
+
+  const refreshModels = (): void => {
+    void Promise.all([localModels(), getSettings()])
+      .then(([list, s]) => {
+        modelSel.setOptions([
+          ...s.localFiles
+            .filter((p) => !list.some((m) => m.path === p))
+            .map((p) => ({ value: p, label: fileName(p), hint: 'file' })),
+          ...list.map((m) => ({ value: m.path, label: m.name }))
+        ]);
+        modelSel.setValue(s.modelFile);
+      })
+      .catch((err: unknown) => console.error('Failed to load models:', err));
+  };
+
+  const refreshHistory = (): void => {
+    chatsList()
+      .then((chats) => {
+        histSel.setOptions(
+          chats.map((c) => ({ value: c.id, label: c.title, hint: fmtDay(c.updated) }))
+        );
+      })
+      .catch((err: unknown) => console.error('Failed to load chats:', err));
+  };
+
+  modelSel.onChange((value) => {
+    patchSettings({ modelFile: value }).catch((err: unknown) =>
+      console.error('Failed to save model:', err)
+    );
+  });
+
+  histSel.onChange((id) => {
+    chatsLoad(id)
+      .then((chat) => {
+        chatId = id;
+        history = chat.messages;
+        renderAll();
+        histSel.reset();
+      })
+      .catch((err: unknown) => reportDebug('chat.load', err));
+  });
+
+  byId('chat-new').addEventListener('click', () => {
+    history = [];
+    chatId = newChatId();
+    renderAll();
+    input.focus();
+  });
+
   const debugBlock = (err: unknown): string =>
     isDebugEnabled()
       ? `<pre class="debug-block">${escapeHtml(String(err))}\n${new Date().toISOString()}</pre>`
@@ -81,7 +138,7 @@ export const mountChat = (root: HTMLElement): void => {
     e.preventDefault();
     const text = input.value.trim();
     if (!text || pending) return;
-    if (!sel.value) {
+    if (!modelSel.getValue()) {
       addMsg('error', '<p>Pick a model above first — a downloaded one or a local .gguf.</p>');
       return;
     }
@@ -95,6 +152,7 @@ export const mountChat = (root: HTMLElement): void => {
         thinking.className = 'msg msg-assistant';
         thinking.innerHTML = `<div class="msg-body">${escapeHtml(res.content)}</div>`;
         history.push({ role: 'assistant', content: res.content });
+        void chatsSave(chatId, chatTitle(history), history).then(refreshHistory);
       })
       .catch((err: unknown) => {
         reportDebug('chat.send', err);
@@ -112,5 +170,9 @@ export const mountChat = (root: HTMLElement): void => {
   });
 
   refreshModels();
-  onTabOpen('chat', refreshModels);
+  refreshHistory();
+  onTabOpen('chat', () => {
+    refreshModels();
+    refreshHistory();
+  });
 };

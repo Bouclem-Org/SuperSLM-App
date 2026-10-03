@@ -4,12 +4,14 @@ A desktop superapp for small language models (SLMs), built with Electron.
 
 ## Status
 
-v0.1.6 — Home, Models (HF sort + search, detail panel, GGUF downloads to
-`~/.superslm/models/`, local .gguf picker), Chat (model selector, real
-inference via llama.cpp backend), and Settings (General, Models, Backend,
-Theme, Changelog, Debug) via the sidebar gear. Five themes, text size,
-fullscreen, debug, devtools, modelFile, confirmDownload and
-idleStopMinutes persist to `~/.superslm/settings.json`. App icon in
+v0.1.8 — LM SuperApp. Home dashboard (stat tiles), Models (HF sort + search, detail panel, GGUF downloads to
+`~/.superslm/models/`, local .gguf picker), Chat (custom model select,
+chat history in `~/.superslm/chats/`, real inference via llama.cpp
+backend), Library (local files + downloads), Finetune (placeholder via "+"
+menu), and Settings (General, Backend, Theme, Changelog, Debug) via the
+sidebar gear. Five themes, text size, fullscreen, debug, devtools,
+modelFile, localFiles, confirmDownload, idleStopMinutes and backendBuild
+persist to `~/.superslm/settings.json`. App icon in
 `assets/` (regenerate via `node scripts/gen-icon.mjs`). `src/llamacpp.ts`
 manages `llama-server` on port 8391: spawn, /health polling, OpenAI-style
 /v1/chat/completions, idle auto-stop, status/start/stop IPC. Install

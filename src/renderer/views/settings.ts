@@ -7,7 +7,6 @@ import {
   onBackendProgress,
   openDevTools,
   patchSettings,
-  pickGguf,
   setFullscreen,
   startBackend,
   stopBackend
@@ -22,7 +21,6 @@ const ICON_GENERAL = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><
 const ICON_THEME = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/></svg>`;
 const ICON_CHANGELOG = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>`;
 const ICON_DEBUG = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9a4 4 0 1 1 8 0v5a4 4 0 0 1-8 0z"/><path d="M9 5.5a3 3 0 0 1 6 0"/><path d="M8 10 4.5 8.5M8 14H4M8.5 17.5 5 19M16 10l3.5-1.5M16 14h4M15.5 17.5 19 19"/></svg>`;
-const ICON_MODELS = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>`;
 const ICON_BACKEND = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/></svg>`;
 
 const IDLE_OPTIONS = [0, 5, 10, 15];
@@ -73,11 +71,19 @@ const initGeneral = (): void => {
     .catch((err: unknown) => console.error('Failed to load app info:', err));
 
   const fsBox = byId('opt-fullscreen') as HTMLInputElement;
+  const confirmBox = byId('opt-confirm-dl') as HTMLInputElement;
   getSettings()
     .then((s) => {
       fsBox.checked = s.fullscreen;
+      confirmBox.checked = s.confirmDownload;
     })
     .catch((err: unknown) => console.error('Failed to load settings:', err));
+
+  confirmBox.addEventListener('change', () => {
+    patchSettings({ confirmDownload: confirmBox.checked }).catch((err: unknown) =>
+      console.error('Failed to save confirm-download:', err)
+    );
+  });
 
   fsBox.addEventListener('change', () => {
     const on = fsBox.checked;
@@ -88,79 +94,6 @@ const initGeneral = (): void => {
       console.error('Failed to set fullscreen:', err)
     );
   });
-};
-
-const initModels = (): void => {
-  const listEl = byId('local-files-list');
-  const pickBtn = byId('btn-pick-gguf') as HTMLButtonElement;
-  const clearBtn = byId('btn-clear-models') as HTMLButtonElement;
-  const confirmBox = byId('opt-confirm-dl') as HTMLInputElement;
-
-  const renderFiles = (files: string[], active: string): void => {
-    listEl.innerHTML = files.length
-      ? `<ul class="lib-rows">${files
-          .map(
-            (p) => `
-          <li class="lib-row${p === active ? ' is-active' : ''}">
-            <span class="lib-name" title="${escapeHtml(p)}">${escapeHtml(fileName(p))}</span>
-            <button class="action-btn lib-remove" type="button" data-path="${escapeHtml(p)}">Remove</button>
-          </li>`
-          )
-          .join('')}</ul>`
-      : '<p class="debug-none">No local files added.</p>';
-    clearBtn.disabled = !files.length;
-    listEl.querySelectorAll<HTMLButtonElement>('.lib-remove').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const path = btn.dataset.path ?? '';
-        getSettings()
-          .then((s) =>
-            patchSettings({
-              localFiles: s.localFiles.filter((p) => p !== path),
-              modelFile: s.modelFile === path ? '' : s.modelFile
-            })
-          )
-          .then((s) => renderFiles(s.localFiles, s.modelFile))
-          .catch((err: unknown) => console.error('Failed to remove file:', err));
-      });
-    });
-  };
-
-  const refresh = (): void => {
-    getSettings()
-      .then((s) => {
-        renderFiles(s.localFiles, s.modelFile);
-        confirmBox.checked = s.confirmDownload;
-      })
-      .catch((err: unknown) => console.error('Failed to load settings:', err));
-  };
-
-  pickBtn.addEventListener('click', () => {
-    pickGguf()
-      .then((paths) => {
-        if (paths?.length) refresh();
-      })
-      .catch((err: unknown) => reportDebug('settings.pickGguf', err));
-  });
-
-  clearBtn.addEventListener('click', () => {
-    getSettings()
-      .then((s) =>
-        patchSettings({
-          localFiles: [],
-          modelFile: s.localFiles.includes(s.modelFile) ? '' : s.modelFile
-        })
-      )
-      .then((s) => renderFiles(s.localFiles, s.modelFile))
-      .catch((err: unknown) => console.error('Failed to clear files:', err));
-  });
-
-  confirmBox.addEventListener('change', () => {
-    patchSettings({ confirmDownload: confirmBox.checked }).catch((err: unknown) =>
-      console.error('Failed to save confirm-download:', err)
-    );
-  });
-
-  refresh();
 };
 
 const refreshBackendStatus = (): void => {
@@ -323,9 +256,6 @@ export const mountSettings = (root: HTMLElement): void => {
         <button class="settings-item is-active" data-settings="general" type="button">
           ${ICON_GENERAL} <span class="nav-text">General</span>
         </button>
-        <button class="settings-item" data-settings="models" type="button">
-          ${ICON_MODELS} <span class="nav-text">Models</span>
-        </button>
         <button class="settings-item" data-settings="theme" type="button">
           ${ICON_THEME} <span class="nav-text">Theme</span>
         </button>
@@ -354,6 +284,15 @@ export const mountSettings = (root: HTMLElement): void => {
           </div>
 
           <div class="section-group">
+            <h3 class="section-title">Downloads</h3>
+            <label class="setting-row">
+              <input type="checkbox" id="opt-confirm-dl" checked />
+              <span>Ask before downloading</span>
+              <small>Confirm dialog before saving a file</small>
+            </label>
+          </div>
+
+          <div class="section-group">
             <h3 class="section-title">About</h3>
             <dl class="about-list">
               <div class="about-row"><dt>Version</dt><dd id="set-version">—</dd></div>
@@ -361,28 +300,6 @@ export const mountSettings = (root: HTMLElement): void => {
               <div class="about-row"><dt>Chromium</dt><dd id="set-chrome">—</dd></div>
               <div class="about-row"><dt>Platform</dt><dd id="set-platform">—</dd></div>
             </dl>
-          </div>
-        </div>
-
-        <div class="settings-page" id="settings-models">
-          <h2 class="page-title">Models</h2>
-
-          <div class="section-group">
-            <h3 class="section-title">Local model files</h3>
-            <div id="local-files-list"></div>
-            <div class="be-btns">
-              <button class="action-btn" id="btn-pick-gguf" type="button">Add .gguf…</button>
-              <button class="action-btn" id="btn-clear-models" type="button" disabled>Clear all</button>
-            </div>
-          </div>
-
-          <div class="section-group">
-            <h3 class="section-title">Downloads</h3>
-            <label class="setting-row">
-              <input type="checkbox" id="opt-confirm-dl" checked />
-              <span>Ask before downloading</span>
-              <small>Confirm dialog before saving a file</small>
-            </label>
           </div>
         </div>
 
@@ -511,7 +428,6 @@ export const mountSettings = (root: HTMLElement): void => {
 
   initMenu();
   initGeneral();
-  initModels();
   initDebug();
   initBackend();
   onTabOpen('settings', loadChangelog);

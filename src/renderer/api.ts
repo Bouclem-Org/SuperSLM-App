@@ -46,6 +46,20 @@ export const stopBackend = (): Promise<SuperslmBackendStatus> => requireApi().st
 
 export const localModels = (): Promise<SuperslmLocalModel[]> => requireApi().localModels();
 
+export const chatsList = (): Promise<SuperslmChatMeta[]> => requireApi().chatsList();
+
+export const chatsSave = (
+  id: string,
+  title: string,
+  messages: SuperslmChatMessage[]
+): Promise<{ title: string; updated: number; messages: SuperslmChatMessage[] }> =>
+  requireApi().chatsSave(id, title, messages);
+
+export const chatsLoad = (
+  id: string
+): Promise<{ title: string; updated: number; messages: SuperslmChatMessage[] }> =>
+  requireApi().chatsLoad(id);
+
 export const chatSend = (
   messages: SuperslmChatMessage[]
 ): Promise<{ content: string }> => requireApi().chatSend(messages);

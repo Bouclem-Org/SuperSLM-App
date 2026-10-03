@@ -1,7 +1,7 @@
 {
-  "name": "superslm-app",
-  "version": "0.1.7",
-  "description": "SuperSLM - a desktop home for small language models",
+  "name": "lm-superapp",
+  "version": "0.1.8",
+  "description": "LM SuperApp - a desktop home for small language models",
   "main": "out/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.web.json && esbuild src/renderer/app.ts --bundle --format=iife --sourcemap --target=es2022 --outfile=src/renderer/app.js",

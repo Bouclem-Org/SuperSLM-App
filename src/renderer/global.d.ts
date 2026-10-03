@@ -68,6 +68,12 @@ interface SuperslmBackendStatus {
   lastError: string | null;
 }
 
+interface SuperslmChatMeta {
+  id: string;
+  title: string;
+  updated: number;
+}
+
 interface SuperslmLocalModel {
   name: string;
   path: string;
@@ -101,6 +107,15 @@ interface SuperslmApi {
   startBackend: (modelPath: string) => Promise<SuperslmBackendStatus>;
   stopBackend: () => Promise<SuperslmBackendStatus>;
   localModels: () => Promise<SuperslmLocalModel[]>;
+  chatsList: () => Promise<SuperslmChatMeta[]>;
+  chatsSave: (
+    id: string,
+    title: string,
+    messages: SuperslmChatMessage[]
+  ) => Promise<{ title: string; updated: number; messages: SuperslmChatMessage[] }>;
+  chatsLoad: (
+    id: string
+  ) => Promise<{ title: string; updated: number; messages: SuperslmChatMessage[] }>;
   chatSend: (messages: SuperslmChatMessage[]) => Promise<{ content: string }>;
   installBackend: () => Promise<{ path: string }>;
   onBackendProgress: (cb: (p: SuperslmInstallProgress) => void) => () => void;

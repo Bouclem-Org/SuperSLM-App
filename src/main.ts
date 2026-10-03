@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { execFile } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
-import { mkdir, readFile, readdir, rm, stat } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { PassThrough, Readable } from 'node:stream';
@@ -51,7 +51,7 @@ async function createWindow(): Promise<void> {
     fullscreen: settings.fullscreen,
     backgroundColor: THEME_BG[settings.theme] ?? THEME_BG.dark,
     icon: path.join(app.getAppPath(), 'assets', 'icon.ico'),
-    title: 'SuperSLM',
+    title: 'LM SuperApp',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -296,18 +296,74 @@ ipcMain.handle('backend:stop', () => stopBackend());
 
 ipcMain.handle('backend:chat', async (_event, messages: unknown) => {
   if (!Array.isArray(messages)) throw new Error('Bad messages');
-  const msgs = messages
-    .filter(
-      (m): m is ChatMessage =>
-        !!m && typeof m.role === 'string' && typeof m.content === 'string'
-    )
-    .slice(-20);
+  const msgs = cleanMsgs(messages).slice(-20);
   if (!msgs.length) throw new Error('Empty conversation');
   const settings = await loadSettings();
   if (!settings.modelFile) throw new Error('NO_MODEL: pick a model first');
   if (!getBackendStatus().running) startBackend(settings.modelFile);
   await waitReady();
   return { content: await chatCompletion(msgs) };
+});
+
+const CHATS_DIR = (): string => path.join(homedir(), '.superslm', 'chats');
+
+const cleanMsgs = (messages: unknown): ChatMessage[] =>
+  Array.isArray(messages)
+    ? messages
+        .filter(
+          (m): m is ChatMessage =>
+            !!m && typeof m.role === 'string' && typeof m.content === 'string'
+        )
+        .slice(-100)
+    : [];
+
+ipcMain.handle('chats:list', async () => {
+  try {
+    const files = (await readdir(CHATS_DIR())).filter((f) => f.endsWith('.json'));
+    const items = await Promise.all(
+      files.map(async (f) => {
+        try {
+          const data = JSON.parse(
+            await readFile(path.join(CHATS_DIR(), f), 'utf8')
+          ) as { title?: string; updated?: number };
+          return {
+            id: f.replace(/\.json$/, ''),
+            title: data.title ?? 'Chat',
+            updated: data.updated ?? 0
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+    return items
+      .filter((i): i is { id: string; title: string; updated: number } => i !== null)
+      .sort((a, b) => b.updated - a.updated)
+      .slice(0, 20);
+  } catch {
+    return [];
+  }
+});
+
+ipcMain.handle('chats:save', async (_e, id: unknown, title: unknown, messages: unknown) => {
+  if (typeof id !== 'string' || !/^[\w-]+$/.test(id)) throw new Error('Bad chat id');
+  await mkdir(CHATS_DIR(), { recursive: true });
+  const payload = {
+    title: typeof title === 'string' && title.trim() ? title.trim().slice(0, 80) : 'Chat',
+    updated: Date.now(),
+    messages: cleanMsgs(messages)
+  };
+  await writeFile(path.join(CHATS_DIR(), `${id}.json`), JSON.stringify(payload));
+  return payload;
+});
+
+ipcMain.handle('chats:load', async (_e, id: unknown) => {
+  if (typeof id !== 'string' || !/^[\w-]+$/.test(id)) throw new Error('Bad chat id');
+  return JSON.parse(await readFile(path.join(CHATS_DIR(), `${id}.json`), 'utf8')) as {
+    title: string;
+    updated: number;
+    messages: ChatMessage[];
+  };
 });
 
 const execFileAsync = promisify(execFile);
@@ -385,8 +441,8 @@ ipcMain.handle('backend:install', async (event) => {
 });
 
 void app.whenReady().then(async () => {
-  app.setName('SuperSLM');
-  app.setAppUserModelId('com.superslm.app');
+  app.setName('LM SuperApp');
+  app.setAppUserModelId('com.lmsuperapp.app');
   await ensureStorage();
   setIdleMinutes((await loadSettings()).idleStopMinutes);
   await createWindow();

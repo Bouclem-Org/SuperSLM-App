@@ -21,6 +21,10 @@ contextBridge.exposeInMainWorld('superslm', {
     return () => ipcRenderer.removeListener('models:progress', listener);
   },
   localModels: (): Promise<unknown> => ipcRenderer.invoke('models:local'),
+  chatsList: (): Promise<unknown> => ipcRenderer.invoke('chats:list'),
+  chatsSave: (id: string, title: string, messages: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('chats:save', id, title, messages),
+  chatsLoad: (id: string): Promise<unknown> => ipcRenderer.invoke('chats:load', id),
   getBackendStatus: (): Promise<unknown> => ipcRenderer.invoke('backend:status'),
   startBackend: (modelPath: string): Promise<unknown> =>
     ipcRenderer.invoke('backend:start', modelPath),
