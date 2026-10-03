@@ -10,10 +10,16 @@ export interface SuperslmSettings {
   debug: boolean;
   devtools: boolean;
   modelFile: string;
+  localFiles: string[];
   confirmDownload: boolean;
   fontScale: number;
   idleStopMinutes: number;
+  backendBuild: BackendBuild;
 }
+
+export type BackendBuild = 'cpu' | 'vulkan' | 'cuda-12.4' | 'cuda-13.4';
+
+const BACKEND_BUILDS = new Set<BackendBuild>(['cpu', 'vulkan', 'cuda-12.4', 'cuda-13.4']);
 
 const DEFAULT_SETTINGS: SuperslmSettings = {
   theme: 'dark',
@@ -21,9 +27,11 @@ const DEFAULT_SETTINGS: SuperslmSettings = {
   debug: false,
   devtools: false,
   modelFile: '',
+  localFiles: [],
   confirmDownload: true,
   fontScale: 1,
-  idleStopMinutes: 10
+  idleStopMinutes: 10,
+  backendBuild: 'vulkan'
 };
 
 const THEME_VALUES: readonly ThemeName[] = ['dark', 'light', 'midnight', 'sand', 'forest'];
@@ -66,6 +74,11 @@ export async function patchSettings(
   if (typeof patch.modelFile === 'string' && patch.modelFile.length < 1024) {
     next.modelFile = patch.modelFile;
   }
+  if (Array.isArray(patch.localFiles)) {
+    next.localFiles = patch.localFiles
+      .filter((f): f is string => typeof f === 'string' && f.length > 0 && f.length < 1024)
+      .slice(0, 50);
+  }
   if (typeof patch.confirmDownload === 'boolean') next.confirmDownload = patch.confirmDownload;
   if (
     typeof patch.fontScale === 'number' &&
@@ -81,6 +94,12 @@ export async function patchSettings(
     patch.idleStopMinutes <= 120
   ) {
     next.idleStopMinutes = patch.idleStopMinutes;
+  }
+  if (
+    typeof patch.backendBuild === 'string' &&
+    BACKEND_BUILDS.has(patch.backendBuild as BackendBuild)
+  ) {
+    next.backendBuild = patch.backendBuild as BackendBuild;
   }
   await ensureStorage();
   await writeFile(settingsPath(), JSON.stringify(next, null, 2) + '\n', 'utf8');

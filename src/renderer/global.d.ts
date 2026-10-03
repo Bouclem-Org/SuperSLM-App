@@ -1,14 +1,18 @@
 type SuperslmTheme = 'dark' | 'light' | 'midnight' | 'sand' | 'forest';
 
+type SuperslmBackendBuild = 'cpu' | 'vulkan' | 'cuda-12.4' | 'cuda-13.4';
+
 interface SuperslmSettings {
   theme: SuperslmTheme;
   fullscreen: boolean;
   debug: boolean;
   devtools: boolean;
   modelFile: string;
+  localFiles: string[];
   confirmDownload: boolean;
   fontScale: number;
   idleStopMinutes: number;
+  backendBuild: SuperslmBackendBuild;
 }
 
 interface SuperslmAppInfo {
@@ -67,6 +71,7 @@ interface SuperslmBackendStatus {
 interface SuperslmLocalModel {
   name: string;
   path: string;
+  size: number;
 }
 
 interface SuperslmChatMessage {
@@ -85,7 +90,7 @@ interface SuperslmApi {
   getChangelog: () => Promise<string>;
   getSettings: () => Promise<SuperslmSettings>;
   patchSettings: (patch: Partial<SuperslmSettings>) => Promise<SuperslmSettings>;
-  pickGguf: () => Promise<string | null>;
+  pickGguf: () => Promise<string[] | null>;
   setFullscreen: (on: boolean) => Promise<void>;
   openDevTools: () => Promise<void>;
   listModels: (search: string, sort: SuperslmModelSort) => Promise<SuperslmModelSummary[]>;

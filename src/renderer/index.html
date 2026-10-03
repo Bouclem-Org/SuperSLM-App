@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="styles/home.css" />
   <link rel="stylesheet" href="styles/models.css" />
   <link rel="stylesheet" href="styles/chat.css" />
+  <link rel="stylesheet" href="styles/library.css" />
   <link rel="stylesheet" href="styles/settings.css" />
 </head>
 <body>
@@ -53,6 +54,29 @@
           </svg>
           <span class="nav-text">Chat</span>
         </button>
+        <button class="nav-item" data-tab="library" type="button">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+          </svg>
+          <span class="nav-text">Library</span>
+        </button>
+        <div class="nav-more" id="nav-more">
+          <button class="nav-item" id="nav-more-btn" type="button" aria-label="More tabs" title="More">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            <span class="nav-text">More</span>
+          </button>
+          <div class="nav-more-menu" id="nav-more-menu">
+            <button class="nav-item" data-tab="finetune" type="button">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
+              </svg>
+              <span class="nav-text">Finetune</span>
+            </button>
+          </div>
+        </div>
       </nav>
 
       <footer class="sidebar-foot">
@@ -75,6 +99,8 @@
       <section class="tab is-visible" id="tab-home"></section>
       <section class="tab" id="tab-models"></section>
       <section class="tab" id="tab-chat"></section>
+      <section class="tab" id="tab-library"></section>
+      <section class="tab" id="tab-finetune"></section>
       <section class="tab" id="tab-settings"></section>
     </main>
   </div>

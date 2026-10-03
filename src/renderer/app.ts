@@ -4,13 +4,17 @@ import { byId } from './core/dom';
 import { initTabs } from './core/tabs';
 import { applyFontScale, applyTheme, initTheme } from './core/theme';
 import { mountChat } from './views/chat';
+import { mountFinetune } from './views/finetune';
 import { mountHome } from './views/home';
+import { mountLibrary } from './views/library';
 import { mountModels } from './views/models';
 import { mountSettings } from './views/settings';
 
 mountHome(byId('tab-home'));
 mountModels(byId('tab-models'));
 mountChat(byId('tab-chat'));
+mountLibrary(byId('tab-library'));
+mountFinetune(byId('tab-finetune'));
 mountSettings(byId('tab-settings'));
 
 initTabs();

@@ -1,0 +1,65 @@
+.library-list {
+  flex: 1;
+  overflow: auto;
+  padding-bottom: 24px;
+}
+
+.library-list .section-title {
+  margin-top: 26px;
+}
+
+.library-list .section-title:first-child {
+  margin-top: 10px;
+}
+
+.lib-rows {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.lib-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.lib-row.is-active .lib-name {
+  color: var(--accent);
+}
+
+.lib-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lib-size {
+  flex: none;
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.lib-use {
+  flex: none;
+  margin-top: 0;
+}
+
+.lib-remove {
+  flex: none;
+  margin-top: 0;
+}
+
+.lib-tag {
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--faint);
+  font-size: 10px;
+}

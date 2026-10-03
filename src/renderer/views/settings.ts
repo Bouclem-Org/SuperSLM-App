@@ -14,6 +14,7 @@ import {
 } from '../api';
 import { getDebugEntries, reportDebug, setDebugEnabled } from '../core/debug';
 import { byId, escapeHtml } from '../core/dom';
+import { fileName } from '../core/format';
 import { renderMarkdown } from '../core/markdown';
 import { onTabOpen } from '../core/tabs';
 
@@ -26,7 +27,12 @@ const ICON_BACKEND = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><
 
 const IDLE_OPTIONS = [0, 5, 10, 15];
 
-const fileName = (p: string): string => p.split(/[\\/]/).pop() ?? p;
+const BACKEND_BUILDS: { id: SuperslmBackendBuild; label: string; hint: string }[] = [
+  { id: 'vulkan', label: 'Vulkan', hint: 'GPU — works on most cards' },
+  { id: 'cuda-13.4', label: 'CUDA 13.4', hint: 'NVIDIA GPU, newer driver' },
+  { id: 'cuda-12.4', label: 'CUDA 12.4', hint: 'NVIDIA GPU, older driver' },
+  { id: 'cpu', label: 'CPU only', hint: 'No GPU acceleration' }
+];
 
 const TEXT_SIZES: { value: number; label: string; hint: string }[] = [
   { value: 0.85, label: 'Compact', hint: 'Denser UI' },
@@ -85,36 +91,67 @@ const initGeneral = (): void => {
 };
 
 const initModels = (): void => {
-  const label = byId('model-file-label');
+  const listEl = byId('local-files-list');
   const pickBtn = byId('btn-pick-gguf') as HTMLButtonElement;
-  const clearBtn = byId('btn-clear-model') as HTMLButtonElement;
+  const clearBtn = byId('btn-clear-models') as HTMLButtonElement;
   const confirmBox = byId('opt-confirm-dl') as HTMLInputElement;
 
-  const showPath = (p: string): void => {
-    label.textContent = p ? fileName(p) : 'None';
-    label.title = p;
-    clearBtn.disabled = !p;
+  const renderFiles = (files: string[], active: string): void => {
+    listEl.innerHTML = files.length
+      ? `<ul class="lib-rows">${files
+          .map(
+            (p) => `
+          <li class="lib-row${p === active ? ' is-active' : ''}">
+            <span class="lib-name" title="${escapeHtml(p)}">${escapeHtml(fileName(p))}</span>
+            <button class="action-btn lib-remove" type="button" data-path="${escapeHtml(p)}">Remove</button>
+          </li>`
+          )
+          .join('')}</ul>`
+      : '<p class="debug-none">No local files added.</p>';
+    clearBtn.disabled = !files.length;
+    listEl.querySelectorAll<HTMLButtonElement>('.lib-remove').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const path = btn.dataset.path ?? '';
+        getSettings()
+          .then((s) =>
+            patchSettings({
+              localFiles: s.localFiles.filter((p) => p !== path),
+              modelFile: s.modelFile === path ? '' : s.modelFile
+            })
+          )
+          .then((s) => renderFiles(s.localFiles, s.modelFile))
+          .catch((err: unknown) => console.error('Failed to remove file:', err));
+      });
+    });
   };
 
-  getSettings()
-    .then((s) => {
-      showPath(s.modelFile);
-      confirmBox.checked = s.confirmDownload;
-    })
-    .catch((err: unknown) => console.error('Failed to load settings:', err));
+  const refresh = (): void => {
+    getSettings()
+      .then((s) => {
+        renderFiles(s.localFiles, s.modelFile);
+        confirmBox.checked = s.confirmDownload;
+      })
+      .catch((err: unknown) => console.error('Failed to load settings:', err));
+  };
 
   pickBtn.addEventListener('click', () => {
     pickGguf()
-      .then((p) => {
-        if (p) showPath(p);
+      .then((paths) => {
+        if (paths?.length) refresh();
       })
       .catch((err: unknown) => reportDebug('settings.pickGguf', err));
   });
 
   clearBtn.addEventListener('click', () => {
-    patchSettings({ modelFile: '' })
-      .then(() => showPath(''))
-      .catch((err: unknown) => console.error('Failed to clear model:', err));
+    getSettings()
+      .then((s) =>
+        patchSettings({
+          localFiles: [],
+          modelFile: s.localFiles.includes(s.modelFile) ? '' : s.modelFile
+        })
+      )
+      .then((s) => renderFiles(s.localFiles, s.modelFile))
+      .catch((err: unknown) => console.error('Failed to clear files:', err));
   });
 
   confirmBox.addEventListener('change', () => {
@@ -122,6 +159,8 @@ const initModels = (): void => {
       console.error('Failed to save confirm-download:', err)
     );
   });
+
+  refresh();
 };
 
 const refreshBackendStatus = (): void => {
@@ -188,10 +227,21 @@ const initBackend = (): void => {
     });
   });
 
+  document.querySelectorAll<HTMLInputElement>('input[name="bebuild"]').forEach((r) => {
+    r.addEventListener('change', () => {
+      patchSettings({ backendBuild: r.value as SuperslmBackendBuild }).catch((err: unknown) =>
+        console.error('Failed to save backend build:', err)
+      );
+    });
+  });
+
   getSettings()
     .then((s) => {
       document.querySelectorAll<HTMLInputElement>('input[name="idletime"]').forEach((r) => {
         r.checked = Number(r.value) === s.idleStopMinutes;
+      });
+      document.querySelectorAll<HTMLInputElement>('input[name="bebuild"]').forEach((r) => {
+        r.checked = r.value === s.backendBuild;
       });
     })
     .catch((err: unknown) => console.error('Failed to load settings:', err));
@@ -318,13 +368,11 @@ export const mountSettings = (root: HTMLElement): void => {
           <h2 class="page-title">Models</h2>
 
           <div class="section-group">
-            <h3 class="section-title">Local model</h3>
-            <div class="model-source">
-              <span class="model-source-path" id="model-file-label">None</span>
-              <div class="model-source-btns">
-                <button class="action-btn" id="btn-pick-gguf" type="button">Browse .gguf…</button>
-                <button class="action-btn" id="btn-clear-model" type="button" disabled>Clear</button>
-              </div>
+            <h3 class="section-title">Local model files</h3>
+            <div id="local-files-list"></div>
+            <div class="be-btns">
+              <button class="action-btn" id="btn-pick-gguf" type="button">Add .gguf…</button>
+              <button class="action-btn" id="btn-clear-models" type="button" disabled>Clear all</button>
             </div>
           </div>
 
@@ -386,6 +434,29 @@ export const mountSettings = (root: HTMLElement): void => {
               <button class="action-btn" id="btn-be-stop" type="button">Stop</button>
             </div>
             <p class="settings-note" id="be-install-note"></p>
+          </div>
+
+          <div class="section-group">
+            <h3 class="section-title">Engine</h3>
+            <dl class="about-list">
+              <div class="about-row"><dt>Engine</dt><dd>llama.cpp</dd></div>
+            </dl>
+            <p class="settings-note">More engines may come later.</p>
+          </div>
+
+          <div class="section-group">
+            <h3 class="section-title">Build</h3>
+            <div class="theme-options" role="radiogroup" aria-label="Backend build">
+              ${BACKEND_BUILDS.map(
+                (b) => `
+              <label class="theme-option">
+                <input type="radio" name="bebuild" value="${b.id}" />
+                <span>${b.label}</span>
+                <small>${b.hint}</small>
+              </label>`
+              ).join('')}
+            </div>
+            <p class="settings-note">Which llama.cpp build Install downloads.</p>
           </div>
 
           <div class="section-group">

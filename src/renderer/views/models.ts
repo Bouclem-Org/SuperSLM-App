@@ -7,6 +7,7 @@ import {
 } from '../api';
 import { reportDebug } from '../core/debug';
 import { byId, escapeHtml } from '../core/dom';
+import { fmtBytes } from '../core/format';
 import { renderMarkdown } from '../core/markdown';
 import { onTabOpen } from '../core/tabs';
 
@@ -18,18 +19,6 @@ const compact = new Intl.NumberFormat('en', { notation: 'compact' });
 const DEBOUNCE_MS = 300;
 const LOAD_TIMEOUT_MS = 15000;
 const META_ROWS = 4;
-
-const fmtBytes = (n: number | null): string => {
-  if (n === null || !Number.isFinite(n) || n <= 0) return '—';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  let i = 0;
-  let v = n;
-  while (v >= 1024 && i < units.length - 1) {
-    v /= 1024;
-    i += 1;
-  }
-  return `${v.toFixed(v >= 100 || i === 0 ? 0 : 1)} ${units[i]}`;
-};
 
 const fmtDate = (iso: string): string =>
   iso ? new Date(iso).toLocaleDateString() : '—';
@@ -45,8 +34,6 @@ const cleanReadme = (md: string): string =>
     .replace(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-
-const fileName = (p: string): string => p.split(/[\\/]/).pop() ?? p;
 
 export const mountModels = (root: HTMLElement): void => {
   root.innerHTML = `
@@ -240,8 +227,10 @@ export const mountModels = (root: HTMLElement): void => {
 
   localBtn.addEventListener('click', () => {
     pickGguf()
-      .then((p) => {
-        if (p) setStatus(`Local model set: ${fileName(p)}`);
+      .then((paths) => {
+        if (paths?.length) {
+          setStatus(`Added ${paths.length} file${paths.length === 1 ? '' : 's'} to your library.`);
+        }
       })
       .catch((err) => reportDebug('models.pickGguf', err));
   });

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.7 - 2026-10-03
+
+- Added Library tab: picked local files (with a `file` badge) + downloaded models, each with size and "Use in chat" / Remove; placeholder sections for finetuned models and generated media
+- Local .gguf picking is now multi-select and saves to a `localFiles` list — add from Library, the Models toolbar, or Settings > Models (which manages the list: per-file Remove, Clear all)
+- Chat's model selector lists every picked file and downloaded model
+- Added a "+" More button in the sidebar — hover or click reveals extra tabs; Finetune is the first (placeholder, not working yet)
+- Added backend build choice in Settings > Backend: Vulkan (default, GPU), CUDA 13.4, CUDA 12.4, or CPU — Install downloads that build
+- Fixed install assuming CPU: llama.cpp build is now a real setting (`backendBuild`)
+
 ## 0.1.6 - 2026-09-27
 
 - Chat works for real: pick a model (downloaded GGUFs + local files) in the Chat tab and send a message — it starts the llama.cpp backend and replies

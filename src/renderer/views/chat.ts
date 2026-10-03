@@ -1,11 +1,10 @@
 import { chatSend, getSettings, localModels, patchSettings } from '../api';
 import { isDebugEnabled, reportDebug } from '../core/debug';
 import { byId, escapeHtml } from '../core/dom';
+import { fileName } from '../core/format';
 import { onTabOpen } from '../core/tabs';
 
 const ICON_SEND = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
-
-const fileName = (p: string): string => p.split(/[\\/]/).pop() ?? p;
 
 export const mountChat = (root: HTMLElement): void => {
   root.innerHTML = `
@@ -40,13 +39,15 @@ export const mountChat = (root: HTMLElement): void => {
   const refreshModels = (): void => {
     void Promise.all([localModels(), getSettings()])
       .then(([list, s]) => {
-        const extra =
-          s.modelFile && !list.some((m) => m.path === s.modelFile)
-            ? `<option value="${escapeHtml(s.modelFile)}">${escapeHtml(fileName(s.modelFile))} (file)</option>`
-            : '';
+        const picked = s.localFiles
+          .filter((p) => !list.some((m) => m.path === p))
+          .map(
+            (p) =>
+              `<option value="${escapeHtml(p)}">${escapeHtml(fileName(p))} (file)</option>`
+          );
         sel.innerHTML =
           `<option value="" disabled${s.modelFile ? '' : ' selected'}>Pick a model…</option>` +
-          extra +
+          picked.join('') +
           list
             .map((m) => `<option value="${escapeHtml(m.path)}">${escapeHtml(m.name)}</option>`)
             .join('');

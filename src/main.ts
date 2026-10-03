@@ -98,14 +98,18 @@ ipcMain.handle('dialog:pickGguf', async (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win) return null;
   const res = await dialog.showOpenDialog(win, {
-    title: 'Choose a GGUF model',
+    title: 'Choose GGUF models',
     filters: [{ name: 'GGUF model', extensions: ['gguf'] }],
-    properties: ['openFile']
+    properties: ['openFile', 'multiSelections']
   });
-  const file = res.filePaths[0];
-  if (res.canceled || !file) return null;
-  await patchSettings({ modelFile: file });
-  return file;
+  if (res.canceled || !res.filePaths.length) return null;
+  const settings = await loadSettings();
+  const localFiles = [...new Set([...settings.localFiles, ...res.filePaths])];
+  await patchSettings({
+    localFiles,
+    modelFile: settings.modelFile || res.filePaths[0]
+  });
+  return res.filePaths;
 });
 
 ipcMain.handle('window:fullscreen', (event, flag: unknown) => {
@@ -258,7 +262,7 @@ ipcMain.handle('models:download', async (event, modelId: unknown, file: unknown)
 
 ipcMain.handle('models:local', async () => {
   const base = path.join(homedir(), '.superslm', 'models');
-  const out: { name: string; path: string }[] = [];
+  const out: { name: string; path: string; size: number }[] = [];
   try {
     for (const org of await readdir(base)) {
       const orgDir = path.join(base, org);
@@ -268,7 +272,12 @@ ipcMain.handle('models:local', async () => {
         if (!(await stat(dir)).isDirectory()) continue;
         for (const file of await readdir(dir)) {
           if (file.toLowerCase().endsWith('.gguf')) {
-            out.push({ name: `${org}/${name} — ${file}`, path: path.join(dir, file) });
+            const fp = path.join(dir, file);
+            out.push({
+              name: `${org}/${name} — ${file}`,
+              path: fp,
+              size: (await stat(fp)).size
+            });
           }
         }
       }
@@ -319,15 +328,25 @@ ipcMain.handle('backend:install', async (event) => {
       headers: { 'User-Agent': 'superslm' }
     })
   ).json()) as { assets?: { name: string; browser_download_url: string }[] }[];
+  const settings = await loadSettings();
+  const BUILD_ASSET: Record<string, RegExp> = {
+    cpu: /bin-win-cpu-x64\.zip$/i,
+    vulkan: /bin-win-vulkan-x64\.zip$/i,
+    'cuda-12.4': /bin-win-cuda-12\.4-x64\.zip$/i,
+    'cuda-13.4': /bin-win-cuda-13\.4-x64\.zip$/i
+  };
+  const re = BUILD_ASSET[settings.backendBuild] ?? BUILD_ASSET.vulkan;
   let asset: { name: string; browser_download_url: string } | undefined;
   for (const rel of releases) {
-    const assets = rel.assets ?? [];
-    asset =
-      assets.find((a) => /bin-win-cpu-x64\.zip$/i.test(a.name)) ??
-      assets.find((a) => /bin-win-.*x64.*\.zip$/i.test(a.name));
-    if (asset) break;
+    const found = (rel.assets ?? []).find((a) => re.test(a.name));
+    if (found) {
+      asset = found;
+      break;
+    }
   }
-  if (!asset) throw new Error('No Windows build found in recent llama.cpp releases');
+  if (!asset) {
+    throw new Error(`No ${settings.backendBuild} build found in recent llama.cpp releases`);
+  }
 
   const binDir = path.join(homedir(), '.superslm', 'bin');
   await mkdir(binDir, { recursive: true });

@@ -197,6 +197,34 @@ body {
   outline-offset: -1.5px;
 }
 
+.nav-more {
+  position: relative;
+}
+
+.nav-more-menu {
+  position: absolute;
+  left: calc(100% + 10px);
+  bottom: -4px;
+  z-index: 20;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 160px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--sidebar);
+}
+
+.nav-more:hover .nav-more-menu,
+.nav-more.is-open .nav-more-menu {
+  display: flex;
+}
+
+.nav-more-menu .nav-item {
+  width: 100%;
+}
+
 .nav-soon {
   margin-left: auto;
   padding: 2px 7px;

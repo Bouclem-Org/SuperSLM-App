@@ -19,7 +19,18 @@ export const initTabs = (): void => {
   document
     .querySelectorAll<HTMLButtonElement>('.nav-item[data-tab]')
     .forEach((item) =>
-      item.addEventListener('click', () => showTab(item.dataset.tab ?? 'home'))
+      item.addEventListener('click', () => {
+        showTab(item.dataset.tab ?? 'home');
+        document.getElementById('nav-more')?.classList.remove('is-open');
+      })
     );
+  document.getElementById('nav-more-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('nav-more')?.classList.toggle('is-open');
+  });
+  document.addEventListener('click', (e) => {
+    const more = document.getElementById('nav-more');
+    if (more && !more.contains(e.target as Node)) more.classList.remove('is-open');
+  });
   document.getElementById('settings-btn')?.addEventListener('click', () => showTab('settings'));
 };
