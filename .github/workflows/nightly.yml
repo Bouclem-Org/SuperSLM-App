@@ -1,0 +1,63 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # every night, 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  nightly:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Skip if no new commits since last nightly
+        id: check
+        shell: bash
+        run: |
+          last=$(git tag -l 'nightly-*' --sort=-v:refname | head -1 || true)
+          if [ -n "$last" ] && [ "$(git rev-list -n1 "$last")" = "$(git rev-parse HEAD)" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No new commits since $last — skipping nightly."
+          else
+            sha=$(git rev-parse --short HEAD)
+            echo "tag=nightly-$sha" >> "$GITHUB_OUTPUT"
+            echo "ver=0.2.0-nightly.$sha" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.check.outputs.skip != 'true'
+        run: npm ci
+
+      - name: Version the build after the commit
+        if: steps.check.outputs.skip != 'true'
+        run: npm version --no-git-tag-version ${{ steps.check.outputs.ver }}
+
+      - name: Build
+        if: steps.check.outputs.skip != 'true'
+        run: npm run build
+
+      - name: Package installer (.exe)
+        if: steps.check.outputs.skip != 'true'
+        run: npx electron-builder --win nsis --publish never
+
+      - name: Publish nightly release
+        if: steps.check.outputs.skip != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.check.outputs.tag }}" dist/*.exe \
+            --title "Nightly ${{ steps.check.outputs.tag }}" \
+            --notes "Automated nightly build of commit ${{ github.sha }}." \
+            --prerelease

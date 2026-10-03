@@ -4,7 +4,7 @@ Guidelines for working on this repository.
 
 ## Versioning
 
-- Versions are feature batches: `0.1.x`, one increment per batch (`0.1.9` → `0.1.10` — `.10` comes after `.9`, it is not `0.1.0`).
+- Versions are feature batches: `0.x.y`, one increment per batch (`0.1.9` → `0.1.10` → `0.2.0` — `.10` comes after `.9`, it is not `0.1.0`).
 - The user lists the version number and its features; implement exactly that set.
 - On every version bump:
   - `package.json` → `"version"` matches.
@@ -22,6 +22,8 @@ Guidelines for working on this repository.
 
 - `npm run build` = `tsc -p tsconfig.json` (main process) + `tsc -p tsconfig.web.json` (renderer) + esbuild bundle (`--loader:.svg=text`, IIFE, `src/renderer/app.js`).
 - Run the app with `npx electron .` (or `npm start`).
+- `npm run dist` packages a Windows installer via electron-builder (config in `package.json` → `build`, output in `dist/`).
+- `.github/workflows/nightly.yml` builds nightly GitHub prereleases (`nightly-<sha>` tag, version `0.2.0-nightly.<sha>`), skipping nights with no new commits.
 
 ## Architecture
 

@@ -1,14 +1,14 @@
-# SuperSLM-App
+# LM SuperApp
 
 A desktop superapp for small language models (SLMs), built with Electron.
 
 ## Status
 
-v0.1.8 — LM SuperApp. Home dashboard (stat tiles), Models (HF sort + search, detail panel, GGUF downloads to
+v0.2.0 — LM SuperApp. Home dashboard (stat tiles), Models (HF sort + search, detail panel, GGUF downloads to
 `~/.superslm/models/`, local .gguf picker), Chat (custom model select,
 chat history in `~/.superslm/chats/`, real inference via llama.cpp
-backend), Library (local files + downloads), Finetune (placeholder via "+"
-menu), and Settings (General, Backend, Theme, Changelog, Debug) via the
+backend), Library (local files + downloads), Finetune and Export
+(placeholders via "+" menu), and Settings (General, Backend, Theme, Changelog, Debug) via the
 sidebar gear. Five themes, text size, fullscreen, debug, devtools,
 modelFile, localFiles, confirmDownload, idleStopMinutes and backendBuild
 persist to `~/.superslm/settings.json`. App icon in
@@ -63,7 +63,17 @@ button pulls the latest llama.cpp Windows release from GitHub into
 ```
 npm install
 npm start    # tsc (main) + tsc typecheck (renderer) + esbuild bundle + electron
+npm run dist # same build, then electron-builder → dist/LM SuperApp Setup <ver>.exe
 ```
+
+## Packaging & nightly
+
+electron-builder (config in `package.json` → `build`) packages `out/`,
+`src/renderer/`, `src/backend/`, `docs/CHANGELOG.md` and the app icon into a
+NSIS installer. `.github/workflows/nightly.yml` runs nightly (cron + manual):
+skips when HEAD equals the last `nightly-*` tag, otherwise versions the build
+`0.2.0-nightly.<sha>`, builds the `.exe`, and publishes a GitHub prerelease
+tagged `nightly-<sha>`.
 
 ## Direction
 

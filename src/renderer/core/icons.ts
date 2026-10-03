@@ -7,6 +7,7 @@ import copy from '../icons/copy.svg';
 import desktop from '../icons/desktop.svg';
 import download from '../icons/download.svg';
 import edit from '../icons/edit.svg';
+import export_ from '../icons/export.svg';
 import file from '../icons/file.svg';
 import finetune from '../icons/finetune.svg';
 import heart from '../icons/heart.svg';
@@ -30,6 +31,7 @@ const ICONS: Record<string, string> = {
   desktop,
   download,
   edit,
+  export: export_,
   file,
   finetune,
   heart,

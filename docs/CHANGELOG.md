@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 - 2026-10-03
+
+- New Export tab in the `+` More menu (placeholder — later: publish to Hugging Face, convert to GGUF)
+- The app can now be packaged to a Windows installer: `npm run dist` produces `dist/LM SuperApp Setup 0.2.0.exe` — run LM SuperApp directly, no `npm start` needed
+- Nightly builds on GitHub Actions: every night it checks for new commits (skips if none), builds the `.exe` on Windows, and publishes a prerelease named `nightly-<commit>` (e.g. `nightly-2225b90`), versioned `0.2.0-nightly.<commit>`
+
 ## 0.1.10 - 2026-10-03
 
 - Downloads actually show: model detail now lists GGUFs in subfolders AND the companion `*-GGUF` repo (was empty for most models)

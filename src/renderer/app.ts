@@ -6,6 +6,7 @@ import { fillIcons } from './core/icons';
 import { initTabs } from './core/tabs';
 import { applyFontScale, applyTheme, initTheme } from './core/theme';
 import { mountChat } from './views/chat';
+import { mountExport } from './views/export';
 import { mountFinetune } from './views/finetune';
 import { mountHome } from './views/home';
 import { mountLibrary } from './views/library';
@@ -17,6 +18,7 @@ mountModels(byId('tab-models'));
 mountChat(byId('tab-chat'));
 mountLibrary(byId('tab-library'));
 mountFinetune(byId('tab-finetune'));
+mountExport(byId('tab-export'));
 mountSettings(byId('tab-settings'));
 
 initTabs();
