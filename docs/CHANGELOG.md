@@ -4,7 +4,7 @@
 
 - Downloads actually show: model detail now lists GGUFs in subfolders AND the companion `*-GGUF` repo (was empty for most models)
 - Quant badges on downloadable files (Q4_K_M, Q8_0, IQ4_XS, F16…)
-- LaTeX math in replies & descriptions renders as real formulas via KaTeX ($…$, $$…$$, \(…\), \[…\])
+- LaTeX math in replies & descriptions renders as real formulas via KaTeX (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`)
 - PDF links (`.pdf`, arXiv `/pdf/`) open in your browser
 - Copy button on every code block; copy button next to the model name in detail
 - Model description is centered (760px column)
