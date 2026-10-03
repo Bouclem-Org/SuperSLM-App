@@ -4,8 +4,8 @@
 
 - Renamed the app to LM SuperApp (window title, sidebar, package name)
 - Chat: custom styled model dropdown replacing the ugly native select
-- Chat history: conversations auto-save to `~/.superslm/chats/`; History picker reloads them, New chat starts fresh
-- Chat bubbles are tighter (reduced spacing)
+- Chat history: conversations auto-save to `~/.superslm/chats/`; sidebar lists them under the nav with a "+ New chat" button — click one to reload it
+- Chat layout: centered 960px conversation column, larger 16px bubbles, input and controls scaled up
 - Home is now a small dashboard: greeting + tiles for library count, active model, backend status (clickable shortcuts)
 - Fixed the "+" More menu vanishing before you can reach it (hover bridge)
 - Removed the Models settings page (duplicated by Library); "Ask before downloading" moved to Settings > General

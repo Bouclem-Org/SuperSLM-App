@@ -1,12 +1,12 @@
 import {
   chatSend,
-  chatsList,
   chatsLoad,
   chatsSave,
   getSettings,
   localModels,
   patchSettings
 } from '../api';
+import { refreshSideChats, setActiveSideChat, setChatOpener, setNewChatHandler } from '../core/chats';
 import { isDebugEnabled, reportDebug } from '../core/debug';
 import { byId, escapeHtml } from '../core/dom';
 import { fileName } from '../core/format';
@@ -20,16 +20,11 @@ const newChatId = (): string => `c${Date.now().toString(36)}`;
 const chatTitle = (messages: SuperslmChatMessage[]): string =>
   messages.find((m) => m.role === 'user')?.content.slice(0, 60) ?? 'Chat';
 
-const fmtDay = (ts: number): string =>
-  ts ? new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
-
 export const mountChat = (root: HTMLElement): void => {
   root.innerHTML = `
     <div class="chat">
       <div class="chat-top">
         <div id="chat-model-sel"></div>
-        <div id="chat-history-sel"></div>
-        <button class="action-btn" id="chat-new" type="button">New chat</button>
       </div>
       <div class="chat-scroll" id="chat-scroll">
         <p class="chat-empty" id="chat-empty">Pick a model above, then send a message.</p>
@@ -51,7 +46,6 @@ export const mountChat = (root: HTMLElement): void => {
   const form = byId('chat-form') as HTMLFormElement;
   const input = byId('chat-input') as HTMLInputElement;
   const modelSel = mountSelect(byId('chat-model-sel'), 'Pick a model…');
-  const histSel = mountSelect(byId('chat-history-sel'), 'History…');
 
   let history: SuperslmChatMessage[] = [];
   let chatId = newChatId();
@@ -95,36 +89,27 @@ export const mountChat = (root: HTMLElement): void => {
       .catch((err: unknown) => console.error('Failed to load models:', err));
   };
 
-  const refreshHistory = (): void => {
-    chatsList()
-      .then((chats) => {
-        histSel.setOptions(
-          chats.map((c) => ({ value: c.id, label: c.title, hint: fmtDay(c.updated) }))
-        );
-      })
-      .catch((err: unknown) => console.error('Failed to load chats:', err));
-  };
-
   modelSel.onChange((value) => {
     patchSettings({ modelFile: value }).catch((err: unknown) =>
       console.error('Failed to save model:', err)
     );
   });
 
-  histSel.onChange((id) => {
+  setChatOpener((id) => {
     chatsLoad(id)
       .then((chat) => {
         chatId = id;
         history = chat.messages;
         renderAll();
-        histSel.reset();
       })
       .catch((err: unknown) => reportDebug('chat.load', err));
   });
 
-  byId('chat-new').addEventListener('click', () => {
+  setNewChatHandler(() => {
     history = [];
     chatId = newChatId();
+    setActiveSideChat(chatId);
+    refreshSideChats();
     renderAll();
     input.focus();
   });
@@ -152,7 +137,10 @@ export const mountChat = (root: HTMLElement): void => {
         thinking.className = 'msg msg-assistant';
         thinking.innerHTML = `<div class="msg-body">${escapeHtml(res.content)}</div>`;
         history.push({ role: 'assistant', content: res.content });
-        void chatsSave(chatId, chatTitle(history), history).then(refreshHistory);
+        void chatsSave(chatId, chatTitle(history), history).then(() => {
+          setActiveSideChat(chatId);
+          refreshSideChats();
+        });
       })
       .catch((err: unknown) => {
         reportDebug('chat.send', err);
@@ -170,9 +158,8 @@ export const mountChat = (root: HTMLElement): void => {
   });
 
   refreshModels();
-  refreshHistory();
   onTabOpen('chat', () => {
     refreshModels();
-    refreshHistory();
+    refreshSideChats();
   });
 };
