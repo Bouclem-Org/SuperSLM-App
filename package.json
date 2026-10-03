@@ -1,6 +1,6 @@
 {
   "name": "lm-superapp",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "LM SuperApp - a desktop home for small language models",
   "main": "out/main.js",
   "scripts": {

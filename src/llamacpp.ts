@@ -139,7 +139,9 @@ export const waitReady = async (): Promise<void> => {
   throw new Error('Backend start timed out — the model may be too large');
 };
 
-export const chatCompletion = async (messages: ChatMessage[]): Promise<string> => {
+export const chatCompletion = async (
+  messages: ChatMessage[]
+): Promise<{ content: string; tokens?: number }> => {
   if (!proc) throw new Error('BACKEND_DOWN: backend is not running');
   const res = await fetch(`${BASE}/v1/chat/completions`, {
     method: 'POST',
@@ -147,9 +149,15 @@ export const chatCompletion = async (messages: ChatMessage[]): Promise<string> =
     body: JSON.stringify({ model: 'local', messages, stream: false })
   });
   if (!res.ok) throw new Error(`Backend request failed: ${res.status}`);
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  const data = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+    usage?: { completion_tokens?: number };
+  };
   touch();
-  return data.choices?.[0]?.message?.content ?? '';
+  return {
+    content: data.choices?.[0]?.message?.content ?? '',
+    tokens: data.usage?.completion_tokens
+  };
 };
 
 export const stopBackend = (): BackendStatus => {

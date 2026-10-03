@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.9 - 2026-10-03
+
+- Assistant replies render markdown (bold, lists, code, tables) instead of raw `**`
+- Hover actions under each bubble: copy, retry (assistant), edit & resend (user)
+- Message versions: retry/edit keep the old answer/input — browse them with the ‹ n/m › arrows; versions persist in the saved chat
+- Generation speed shown under assistant replies (tok/s, always visible; `~` when estimated)
+- Message timestamps under each bubble (shown on hover)
+
 ## 0.1.8 - 2026-10-03
 
 - Renamed the app to LM SuperApp (window title, sidebar, package name)

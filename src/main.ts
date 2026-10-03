@@ -296,24 +296,63 @@ ipcMain.handle('backend:stop', () => stopBackend());
 
 ipcMain.handle('backend:chat', async (_event, messages: unknown) => {
   if (!Array.isArray(messages)) throw new Error('Bad messages');
-  const msgs = cleanMsgs(messages).slice(-20);
+  const msgs = cleanMsgs(messages)
+    .slice(-20)
+    .map(({ role, content }) => ({ role, content }));
   if (!msgs.length) throw new Error('Empty conversation');
   const settings = await loadSettings();
   if (!settings.modelFile) throw new Error('NO_MODEL: pick a model first');
   if (!getBackendStatus().running) startBackend(settings.modelFile);
   await waitReady();
-  return { content: await chatCompletion(msgs) };
+  const t0 = Date.now();
+  const { content, tokens } = await chatCompletion(msgs);
+  const secs = (Date.now() - t0) / 1000;
+  const approx = tokens === undefined;
+  const n = tokens ?? Math.max(1, Math.round(content.length / 4));
+  const tokPerSec = secs > 0.05 ? Math.round((n / secs) * 10) / 10 : undefined;
+  return { content, tokPerSec, approx };
 });
 
 const CHATS_DIR = (): string => path.join(homedir(), '.superslm', 'chats');
 
-const cleanMsgs = (messages: unknown): ChatMessage[] =>
+interface StoredMessage extends ChatMessage {
+  versions?: string[];
+  vi?: number;
+  ts?: number;
+  stats?: { tps?: number; approx?: boolean }[];
+}
+
+const cleanMsgs = (messages: unknown): StoredMessage[] =>
   Array.isArray(messages)
     ? messages
         .filter(
-          (m): m is ChatMessage =>
+          (m): m is StoredMessage =>
             !!m && typeof m.role === 'string' && typeof m.content === 'string'
         )
+        .map((m) => ({
+          role: m.role,
+          content: m.content,
+          ...(Array.isArray(m.versions)
+            ? {
+                versions: m.versions
+                  .filter((v): v is string => typeof v === 'string')
+                  .slice(0, 10)
+              }
+            : {}),
+          ...(typeof m.vi === 'number' ? { vi: m.vi } : {}),
+          ...(typeof m.ts === 'number' ? { ts: m.ts } : {}),
+          ...(Array.isArray(m.stats)
+            ? {
+                stats: m.stats
+                  .filter((s): s is { tps?: number; approx?: boolean } => !!s)
+                  .map((s) => ({
+                    ...(typeof s.tps === 'number' ? { tps: s.tps } : {}),
+                    ...(s.approx === true ? { approx: true } : {})
+                  }))
+                  .slice(0, 10)
+              }
+            : {})
+        }))
         .slice(-100)
     : [];
 

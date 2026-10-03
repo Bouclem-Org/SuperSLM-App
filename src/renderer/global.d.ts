@@ -68,6 +68,15 @@ interface SuperslmBackendStatus {
   lastError: string | null;
 }
 
+interface SuperslmStoredMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  versions?: string[];
+  vi?: number;
+  ts?: number;
+  stats?: { tps?: number; approx?: boolean }[];
+}
+
 interface SuperslmChatMeta {
   id: string;
   title: string;
@@ -111,12 +120,14 @@ interface SuperslmApi {
   chatsSave: (
     id: string,
     title: string,
-    messages: SuperslmChatMessage[]
-  ) => Promise<{ title: string; updated: number; messages: SuperslmChatMessage[] }>;
+    messages: SuperslmStoredMessage[]
+  ) => Promise<{ title: string; updated: number; messages: SuperslmStoredMessage[] }>;
   chatsLoad: (
     id: string
-  ) => Promise<{ title: string; updated: number; messages: SuperslmChatMessage[] }>;
-  chatSend: (messages: SuperslmChatMessage[]) => Promise<{ content: string }>;
+  ) => Promise<{ title: string; updated: number; messages: SuperslmStoredMessage[] }>;
+  chatSend: (
+    messages: SuperslmChatMessage[]
+  ) => Promise<{ content: string; tokPerSec?: number; approx?: boolean }>;
   installBackend: () => Promise<{ path: string }>;
   onBackendProgress: (cb: (p: SuperslmInstallProgress) => void) => () => void;
   setZoom: (factor: number) => void;

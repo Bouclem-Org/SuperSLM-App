@@ -10,15 +10,67 @@ import { refreshSideChats, setActiveSideChat, setChatOpener, setNewChatHandler }
 import { isDebugEnabled, reportDebug } from '../core/debug';
 import { byId, escapeHtml } from '../core/dom';
 import { fileName } from '../core/format';
+import { renderMarkdown } from '../core/markdown';
 import { mountSelect } from '../core/select';
 import { onTabOpen } from '../core/tabs';
 
 const ICON_SEND = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
+const ICON_COPY = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+const ICON_RETRY = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>`;
+const ICON_EDIT = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+
+interface MsgStat {
+  tps?: number;
+  approx?: boolean;
+}
+
+interface UIMsg {
+  role: 'user' | 'assistant';
+  versions: string[];
+  vi: number;
+  ts?: number;
+  stats?: MsgStat[];
+}
 
 const newChatId = (): string => `c${Date.now().toString(36)}`;
 
-const chatTitle = (messages: SuperslmChatMessage[]): string =>
-  messages.find((m) => m.role === 'user')?.content.slice(0, 60) ?? 'Chat';
+const toUIMsg = (m: SuperslmStoredMessage): UIMsg => {
+  const versions =
+    Array.isArray(m.versions) && m.versions.length ? m.versions : [m.content];
+  return {
+    role: m.role === 'user' ? 'user' : 'assistant',
+    versions,
+    vi: Math.min(Math.max(m.vi ?? versions.length - 1, 0), versions.length - 1),
+    ts: m.ts,
+    stats: m.stats
+  };
+};
+
+const toFlat = (m: UIMsg): SuperslmChatMessage => ({
+  role: m.role,
+  content: m.versions[m.vi]
+});
+
+const toStored = (m: UIMsg): SuperslmStoredMessage => ({
+  role: m.role,
+  content: m.versions[m.vi],
+  versions: m.versions,
+  vi: m.vi,
+  ts: m.ts,
+  stats: m.stats
+});
+
+const chatTitle = (messages: UIMsg[]): string => {
+  const first = messages.find((m) => m.role === 'user');
+  return first ? first.versions[first.vi].slice(0, 60) : 'Chat';
+};
+
+const fmtTime = (ts: number): string => {
+  const d = new Date(ts);
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === new Date().toDateString()) return time;
+  return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${time}`;
+};
 
 export const mountChat = (root: HTMLElement): void => {
   root.innerHTML = `
@@ -47,9 +99,16 @@ export const mountChat = (root: HTMLElement): void => {
   const input = byId('chat-input') as HTMLInputElement;
   const modelSel = mountSelect(byId('chat-model-sel'), 'Pick a model…');
 
-  let history: SuperslmChatMessage[] = [];
+  let history: UIMsg[] = [];
   let chatId = newChatId();
   let pending = false;
+
+  const save = (): void => {
+    void chatsSave(chatId, chatTitle(history), history.map(toStored)).then(() => {
+      setActiveSideChat(chatId);
+      refreshSideChats();
+    });
+  };
 
   const addMsg = (kind: string, html: string): HTMLElement => {
     empty.hidden = true;
@@ -61,7 +120,49 @@ export const mountChat = (root: HTMLElement): void => {
     return div;
   };
 
-  const renderAll = (): void => {
+  const msgEl = (m: UIMsg, index: number): HTMLElement => {
+    const div = document.createElement('div');
+    div.className = `msg msg-${m.role}`;
+    div.dataset.index = String(index);
+    const body =
+      m.role === 'assistant'
+        ? renderMarkdown(m.versions[m.vi])
+        : escapeHtml(m.versions[m.vi]);
+    const nav =
+      m.versions.length > 1
+        ? `<span class="msg-ver"><button class="msg-act" data-act="prev" type="button" aria-label="Older version">‹</button><span>${
+            m.vi + 1
+          }/${m.versions.length}</span><button class="msg-act" data-act="next" type="button" aria-label="Newer version">›</button></span>`
+        : '';
+    div.innerHTML = `<div class="msg-body">${body}</div>
+      <div class="msg-acts">
+        <button class="msg-act" data-act="copy" type="button" aria-label="Copy" title="Copy">${ICON_COPY}</button>
+        ${
+          m.role === 'assistant'
+            ? `<button class="msg-act" data-act="retry" type="button" aria-label="Retry" title="Retry">${ICON_RETRY}</button>`
+            : `<button class="msg-act" data-act="edit" type="button" aria-label="Edit" title="Edit">${ICON_EDIT}</button>`
+        }
+        ${nav}
+      </div>
+      ${statsRow(m)}`;
+    return div;
+  };
+
+  const statsRow = (m: UIMsg): string => {
+    const stat = m.stats?.[m.vi];
+    const parts: string[] = [];
+    if (m.role === 'assistant' && stat?.tps !== undefined) {
+      parts.push(
+        `<span class="msg-tok">${stat.approx ? '~' : ''}${stat.tps.toFixed(1)} tok/s</span>`
+      );
+    }
+    if (m.ts) parts.push(`<span class="msg-time">${fmtTime(m.ts)}</span>`);
+    return parts.length ? `<div class="msg-stats">${parts.join('')}</div>` : '';
+  };
+
+  const renderAll = (toBottom = true): void => {
+    const atBottom =
+      scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 40;
     scroll.innerHTML = '';
     if (!history.length) {
       const p = document.createElement('p');
@@ -72,8 +173,149 @@ export const mountChat = (root: HTMLElement): void => {
       empty = p;
       return;
     }
-    history.forEach((m) => addMsg(m.role, escapeHtml(m.content)));
+    history.forEach((m, i) => scroll.appendChild(msgEl(m, i)));
+    if (toBottom || atBottom) scroll.scrollTop = scroll.scrollHeight;
   };
+
+  const debugBlock = (err: unknown): string =>
+    isDebugEnabled()
+      ? `<pre class="debug-block">${escapeHtml(String(err))}\n${new Date().toISOString()}</pre>`
+      : '';
+
+  const runCompletion = (popOnError: boolean): void => {
+    pending = true;
+    const thinking = addMsg('thinking', '<em>Starting model / thinking…</em>');
+    chatSend(history.map(toFlat))
+      .then((res) => {
+        thinking.remove();
+        history.push({
+          role: 'assistant',
+          versions: [res.content],
+          vi: 0,
+          ts: Date.now(),
+          stats: [{ tps: res.tokPerSec, approx: res.approx }]
+        });
+        renderAll();
+        save();
+      })
+      .catch((err: unknown) => {
+        reportDebug('chat.send', err);
+        thinking.className = 'msg msg-error';
+        thinking.innerHTML = `<div class="msg-body"><p>Chat failed — ${escapeHtml(
+          err instanceof Error ? err.message : String(err)
+        )}</p>${debugBlock(err)}</div>`;
+        if (popOnError) history.pop();
+      })
+      .finally(() => {
+        pending = false;
+        scroll.scrollTop = scroll.scrollHeight;
+        input.focus();
+      });
+  };
+
+  const retryAt = (index: number): void => {
+    const m = history[index];
+    if (!m || m.role !== 'assistant' || pending || !modelSel.getValue()) return;
+    pending = true;
+    const context = history.slice(0, index).map(toFlat);
+    const body = scroll
+      .querySelector(`.msg[data-index="${index}"]`)
+      ?.querySelector('.msg-body');
+    if (body) body.innerHTML = '<em>Thinking…</em>';
+    chatSend(context)
+      .then((res) => {
+        m.versions.push(res.content);
+        m.vi = m.versions.length - 1;
+        m.ts = Date.now();
+        m.stats = m.stats ?? [];
+        m.stats[m.vi] = { tps: res.tokPerSec, approx: res.approx };
+        save();
+      })
+      .catch((err: unknown) => {
+        reportDebug('chat.retry', err);
+      })
+      .finally(() => {
+        pending = false;
+        renderAll(false);
+        input.focus();
+      });
+  };
+
+  const editAt = (index: number): void => {
+    const m = history[index];
+    const body = scroll
+      .querySelector(`.msg[data-index="${index}"]`)
+      ?.querySelector('.msg-body');
+    if (!m || !body) return;
+    body.innerHTML = `<textarea class="msg-edit" rows="3"></textarea>
+      <span class="msg-edit-btns">
+        <button class="action-btn" data-act="save-edit" type="button">Save &amp; resend</button>
+        <button class="action-btn" data-act="cancel-edit" type="button">Cancel</button>
+      </span>`;
+    const ta = body.querySelector('textarea');
+    if (ta) {
+      ta.value = m.versions[m.vi];
+      ta.focus();
+    }
+  };
+
+  const saveEdit = (index: number, msgEl_: HTMLElement): void => {
+    const m = history[index];
+    const ta = msgEl_.querySelector<HTMLTextAreaElement>('.msg-edit');
+    const text = ta?.value.trim() ?? '';
+    if (!m || !text) {
+      renderAll(false);
+      return;
+    }
+    if (text !== m.versions[m.vi]) {
+      m.versions.push(text);
+      m.vi = m.versions.length - 1;
+    }
+    history = history.slice(0, index + 1);
+    renderAll();
+    runCompletion(false);
+  };
+
+  scroll.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    const btn = target.closest<HTMLElement>('[data-act]');
+    const msgDiv = target.closest<HTMLElement>('.msg[data-index]');
+    if (!btn || !msgDiv) return;
+    const index = Number(msgDiv.dataset.index);
+    const m = history[index];
+    if (!m) return;
+    switch (btn.dataset.act) {
+      case 'copy':
+        void navigator.clipboard.writeText(m.versions[m.vi]);
+        break;
+      case 'prev':
+        if (m.vi > 0) {
+          m.vi -= 1;
+          renderAll(false);
+        }
+        break;
+      case 'next':
+        if (m.vi < m.versions.length - 1) {
+          m.vi += 1;
+          renderAll(false);
+        }
+        break;
+      case 'retry':
+        retryAt(index);
+        break;
+      case 'edit':
+        editAt(index);
+        break;
+      case 'save-edit':
+        saveEdit(index, msgDiv);
+        break;
+      case 'cancel-edit':
+        renderAll(false);
+        break;
+      default:
+        break;
+    }
+  });
 
   const refreshModels = (): void => {
     void Promise.all([localModels(), getSettings()])
@@ -99,7 +341,7 @@ export const mountChat = (root: HTMLElement): void => {
     chatsLoad(id)
       .then((chat) => {
         chatId = id;
-        history = chat.messages;
+        history = chat.messages.map(toUIMsg);
         renderAll();
       })
       .catch((err: unknown) => reportDebug('chat.load', err));
@@ -114,11 +356,6 @@ export const mountChat = (root: HTMLElement): void => {
     input.focus();
   });
 
-  const debugBlock = (err: unknown): string =>
-    isDebugEnabled()
-      ? `<pre class="debug-block">${escapeHtml(String(err))}\n${new Date().toISOString()}</pre>`
-      : '';
-
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = input.value.trim();
@@ -127,34 +364,10 @@ export const mountChat = (root: HTMLElement): void => {
       addMsg('error', '<p>Pick a model above first — a downloaded one or a local .gguf.</p>');
       return;
     }
-    addMsg('user', escapeHtml(text));
-    history.push({ role: 'user', content: text });
+    history.push({ role: 'user', versions: [text], vi: 0, ts: Date.now() });
     input.value = '';
-    pending = true;
-    const thinking = addMsg('thinking', '<em>Starting model / thinking…</em>');
-    chatSend(history)
-      .then((res) => {
-        thinking.className = 'msg msg-assistant';
-        thinking.innerHTML = `<div class="msg-body">${escapeHtml(res.content)}</div>`;
-        history.push({ role: 'assistant', content: res.content });
-        void chatsSave(chatId, chatTitle(history), history).then(() => {
-          setActiveSideChat(chatId);
-          refreshSideChats();
-        });
-      })
-      .catch((err: unknown) => {
-        reportDebug('chat.send', err);
-        thinking.className = 'msg msg-error';
-        thinking.innerHTML = `<div class="msg-body"><p>Chat failed — ${escapeHtml(
-          err instanceof Error ? err.message : String(err)
-        )}</p>${debugBlock(err)}</div>`;
-        history.pop();
-      })
-      .finally(() => {
-        pending = false;
-        scroll.scrollTop = scroll.scrollHeight;
-        input.focus();
-      });
+    renderAll();
+    runCompletion(true);
   });
 
   refreshModels();

@@ -51,18 +51,19 @@ export const chatsList = (): Promise<SuperslmChatMeta[]> => requireApi().chatsLi
 export const chatsSave = (
   id: string,
   title: string,
-  messages: SuperslmChatMessage[]
-): Promise<{ title: string; updated: number; messages: SuperslmChatMessage[] }> =>
+  messages: SuperslmStoredMessage[]
+): Promise<{ title: string; updated: number; messages: SuperslmStoredMessage[] }> =>
   requireApi().chatsSave(id, title, messages);
 
 export const chatsLoad = (
   id: string
-): Promise<{ title: string; updated: number; messages: SuperslmChatMessage[] }> =>
+): Promise<{ title: string; updated: number; messages: SuperslmStoredMessage[] }> =>
   requireApi().chatsLoad(id);
 
 export const chatSend = (
   messages: SuperslmChatMessage[]
-): Promise<{ content: string }> => requireApi().chatSend(messages);
+): Promise<{ content: string; tokPerSec?: number; approx?: boolean }> =>
+  requireApi().chatSend(messages);
 
 export const installBackend = (): Promise<{ path: string }> => requireApi().installBackend();
 
