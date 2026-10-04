@@ -1,0 +1,21 @@
+# .github/workflows/sync-fork.yml
+
+name: Sync Fork
+
+on:
+  schedule:
+    - cron: "0 * * * *"  # toutes les heures
+  workflow_dispatch:      # permet aussi de le lancer manuellement
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Sync fork
+        run: gh repo sync ${{ github.repository }} --branch main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
