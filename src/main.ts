@@ -213,6 +213,7 @@ ipcMain.handle('models:detail', async (_event, id: unknown) => {
   };
 });
 
+//TODO(downloads): pause/cancel + resume (HF supports Range), sha256 verify, download queue
 ipcMain.handle('models:download', async (event, modelId: unknown, repo: unknown, file: unknown) => {
   if (
     typeof modelId !== 'string' ||
@@ -283,6 +284,7 @@ ipcMain.handle('app:openExternal', (_e, url: unknown) => {
   return shell.openExternal(url);
 });
 
+//TODO(library): models:delete IPC to remove downloaded models from disk
 ipcMain.handle('models:local', async () => {
   const base = path.join(homedir(), '.superslm', 'models');
   const out: { name: string; path: string; size: number }[] = [];
@@ -379,6 +381,7 @@ const cleanMsgs = (messages: unknown): StoredMessage[] =>
         .slice(-100)
     : [];
 
+//TODO(chats): chats:delete + chats:rename IPC, then wire into the sidebar list
 ipcMain.handle('chats:list', async () => {
   try {
     const files = (await readdir(CHATS_DIR())).filter((f) => f.endsWith('.json'));

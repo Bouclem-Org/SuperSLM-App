@@ -71,6 +71,9 @@ export const mountLibrary = (root: HTMLElement): void => {
           <h3 class="section-title">Generated media</h3>
           <p class="debug-none">Nothing here yet.</p>`;
 
+        //TODO(library): list finetuned adapters + generated images/videos once those features exist
+        //TODO(library): Delete button for downloaded models (needs models:delete IPC)
+
         list.querySelectorAll<HTMLButtonElement>('.lib-use').forEach((btn) => {
           btn.addEventListener('click', () => {
             patchSettings({ modelFile: btn.dataset.path ?? '' })

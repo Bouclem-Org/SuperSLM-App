@@ -1,3 +1,4 @@
+//TODO(export): publish model to Hugging Face (token auth) + convert/quantize to GGUF
 export const mountExport = (root: HTMLElement): void => {
   root.innerHTML = `
     <div class="models">

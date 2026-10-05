@@ -79,6 +79,7 @@ export const mountChat = (root: HTMLElement): void => {
     <div class="chat">
       <div class="chat-top">
         <div id="chat-model-sel"></div>
+        <!-- TODO(chat): stop-generation button while the backend is answering -->
       </div>
       <div class="chat-scroll" id="chat-scroll">
         <p class="chat-empty" id="chat-empty">Pick a model above, then send a message.</p>
@@ -94,6 +95,10 @@ export const mountChat = (root: HTMLElement): void => {
         <button class="chat-send" type="submit" aria-label="Send">${ICON_SEND}</button>
       </form>
     </div>`;
+
+  //TODO(chat): streaming replies (token-by-token), then a stop button makes sense
+  //TODO(chat): system prompt + temperature controls per conversation
+  //TODO(chat): Ctrl+Up edit-last-message shortcut
 
   const scroll = byId('chat-scroll');
   let empty = byId('chat-empty');

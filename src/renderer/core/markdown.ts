@@ -65,6 +65,7 @@ const codeBlock = (buf: string[]): string =>
     buf.join('\n')
   )}</code></pre>`;
 
+//TODO(markdown): nested lists, task lists (- [ ]), footnotes, syntax highlighting per fence lang
 export const renderMarkdown = (md: string): string => {
   const lines = md.split('\n');
   const math: Stashed[] = [];

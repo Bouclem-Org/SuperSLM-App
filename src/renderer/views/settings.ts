@@ -296,7 +296,7 @@ export const mountSettings = (root: HTMLElement): void => {
               <div class="about-row"><dt>Platform</dt><dd id="set-platform">—</dd></div>
             </dl>
           </div>
-        </div>
+          <!-- TODO(settings): import/export settings.json, llama.cpp update checker -->
 
         <div class="settings-page" id="settings-theme">
           <h2 class="page-title">Theme</h2>

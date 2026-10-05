@@ -69,6 +69,7 @@ export const mountModels = (root: HTMLElement): void => {
             placeholder="Search text-generation models…"
             autocomplete="off"
           />
+          <!-- TODO(models): filter to GGUF-only models, bookmarks/favorites list -->
         </div>
       </header>
       <p class="model-status" id="model-status" aria-live="polite"></p>

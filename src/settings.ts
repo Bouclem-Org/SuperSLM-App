@@ -51,6 +51,7 @@ export async function ensureStorage(): Promise<void> {
   await mkdir(superslmDir(), { recursive: true });
 }
 
+//TODO(settings): schema version + migration path once settings keep growing
 export async function loadSettings(): Promise<SuperslmSettings> {
   try {
     const raw = await readFile(settingsPath(), 'utf8');

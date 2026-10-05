@@ -1,6 +1,8 @@
 import { escapeHtml } from './dom';
 import { icon } from './icons';
 
+//TODO(a11y): arrow-key navigation + Enter to pick inside the dropdown
+
 export interface SelectOption {
   value: string;
   label: string;

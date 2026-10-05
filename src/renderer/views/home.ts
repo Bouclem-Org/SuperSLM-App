@@ -34,6 +34,8 @@ export const mountHome = (root: HTMLElement): void => {
 
     <div class="meta"><span id="date-line"></span></div>`;
 
+  //TODO(home): "continue last chat" tile + recent downloads once we track activity
+
   const greetingEl = root.querySelector('#greeting');
   const dateEl = root.querySelector('#date-line');
   if (greetingEl) greetingEl.textContent = greetingFor(new Date().getHours());

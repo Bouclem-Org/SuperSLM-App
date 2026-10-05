@@ -4,6 +4,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
+//TODO(config): port should be a setting once we run more than one backend
 const PORT = 8391;
 const BIN = process.platform === 'win32' ? 'llama-server.exe' : 'llama-server';
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -98,6 +99,7 @@ export const startBackend = (modelPath: string): BackendStatus => {
   lastError = null;
   ready = false;
   currentModel = modelPath;
+  //TODO(params): expose --ctx-size, --n-gpu-layers, --threads etc. in Settings > Backend
   const child = spawn(
     bin,
     ['--model', modelPath, '--port', String(PORT), '--ctx-size', '4096'],
@@ -139,6 +141,8 @@ export const waitReady = async (): Promise<void> => {
   throw new Error('Backend start timed out — the model may be too large');
 };
 
+//TODO(streaming): use stream:true + SSE so tokens render live in chat (needs IPC events to renderer)
+//TODO(sampling): expose temperature/top_p/top_k/system prompt per chat
 export const chatCompletion = async (
   messages: ChatMessage[]
 ): Promise<{ content: string; tokens?: number }> => {
@@ -160,6 +164,7 @@ export const chatCompletion = async (
   };
 };
 
+//TODO(lifecycle): graceful shutdown via /health first, kill only as fallback
 export const stopBackend = (): BackendStatus => {
   proc?.kill();
   proc = null;
