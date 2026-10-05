@@ -4,6 +4,7 @@ import {
   chatsSave,
   getSettings,
   localModels,
+  onChatChunk,
   openExternal,
   patchSettings
 } from '../api';
@@ -20,6 +21,7 @@ const ICON_SEND = icon('send');
 const ICON_COPY = icon('copy');
 const ICON_RETRY = icon('retry');
 const ICON_EDIT = icon('edit');
+const ICON_CHECK = icon('check');
 
 interface MsgStat {
   tps?: number;
@@ -36,7 +38,7 @@ interface UIMsg {
 
 const newChatId = (): string => `c${Date.now().toString(36)}`;
 
-const toUIMsg = (m: SuperslmStoredMessage): UIMsg => {
+const toUIMsg = (m: LmStoredMessage): UIMsg => {
   const versions =
     Array.isArray(m.versions) && m.versions.length ? m.versions : [m.content];
   return {
@@ -48,12 +50,12 @@ const toUIMsg = (m: SuperslmStoredMessage): UIMsg => {
   };
 };
 
-const toFlat = (m: UIMsg): SuperslmChatMessage => ({
+const toFlat = (m: UIMsg): LmChatMessage => ({
   role: m.role,
   content: m.versions[m.vi]
 });
 
-const toStored = (m: UIMsg): SuperslmStoredMessage => ({
+const toStored = (m: UIMsg): LmStoredMessage => ({
   role: m.role,
   content: m.versions[m.vi],
   versions: m.versions,
@@ -79,6 +81,7 @@ export const mountChat = (root: HTMLElement): void => {
     <div class="chat">
       <div class="chat-top">
         <div id="chat-model-sel"></div>
+        <!-- TODO(chat): stop-generation button while the backend is answering -->
       </div>
       <div class="chat-scroll" id="chat-scroll">
         <p class="chat-empty" id="chat-empty">Pick a model above, then send a message.</p>
@@ -95,10 +98,15 @@ export const mountChat = (root: HTMLElement): void => {
       </form>
     </div>`;
 
+  //TODO(chat): streaming replies (token-by-token), then a stop button makes sense
+  //TODO(chat): system prompt + temperature controls per conversation
+  //TODO(chat): Ctrl+Up edit-last-message shortcut
+
   const scroll = byId('chat-scroll');
   let empty = byId('chat-empty');
   const form = byId('chat-form') as HTMLFormElement;
   const input = byId('chat-input') as HTMLInputElement;
+  const sendBtn = form.querySelector<HTMLButtonElement>('.chat-send')!;
   const modelSel = mountSelect(byId('chat-model-sel'), 'Pick a model…');
   initMdClicks(scroll, (url) =>
     void openExternal(url).catch((err: unknown) => reportDebug('chat.link', err))
@@ -107,6 +115,41 @@ export const mountChat = (root: HTMLElement): void => {
   let history: UIMsg[] = [];
   let chatId = newChatId();
   let pending = false;
+  let chatCfg = { streamReplies: true, notifyOnReply: false };
+
+  const setBusy = (on: boolean): void => {
+    pending = on;
+    sendBtn.disabled = on;
+    sendBtn.classList.toggle('is-busy', on);
+    input.disabled = on;
+  };
+
+  // streamed tokens land in liveBody while a reply is generating
+  let liveBody: HTMLElement | null = null;
+  let liveText = '';
+  let liveQueued = false;
+
+  onChatChunk((text) => {
+    if (!liveBody) return;
+    liveText += text;
+    if (liveQueued) return;
+    liveQueued = true;
+    requestAnimationFrame(() => {
+      liveQueued = false;
+      if (!liveBody) return;
+      liveBody.innerHTML = renderMarkdown(liveText);
+      scroll.scrollTop = scroll.scrollHeight;
+    });
+  });
+
+  const notifyReply = (content: string): void => {
+    if (!chatCfg.notifyOnReply || document.hasFocus()) return;
+    try {
+      new Notification('LM SuperApp', { body: content.slice(0, 120) || 'Reply ready' });
+    } catch (err) {
+      reportDebug('chat.notify', err);
+    }
+  };
 
   const save = (): void => {
     void chatsSave(chatId, chatTitle(history), history.map(toStored)).then(() => {
@@ -189,10 +232,13 @@ export const mountChat = (root: HTMLElement): void => {
       : '';
 
   const runCompletion = (popOnError: boolean): void => {
-    pending = true;
+    setBusy(true);
+    liveText = '';
     const thinking = addMsg('thinking', '<em>Starting model / thinking…</em>');
-    chatSend(history.map(toFlat))
+    liveBody = thinking.querySelector<HTMLElement>('.msg-body');
+    chatSend(history.map(toFlat), chatCfg.streamReplies)
       .then((res) => {
+        liveBody = null;
         thinking.remove();
         history.push({
           role: 'assistant',
@@ -203,8 +249,10 @@ export const mountChat = (root: HTMLElement): void => {
         });
         renderAll();
         save();
+        notifyReply(res.content);
       })
       .catch((err: unknown) => {
+        liveBody = null;
         reportDebug('chat.send', err);
         thinking.className = 'msg msg-error';
         thinking.innerHTML = `<div class="msg-body"><p>Chat failed — ${escapeHtml(
@@ -213,7 +261,7 @@ export const mountChat = (root: HTMLElement): void => {
         if (popOnError) history.pop();
       })
       .finally(() => {
-        pending = false;
+        setBusy(false);
         scroll.scrollTop = scroll.scrollHeight;
         input.focus();
       });
@@ -222,14 +270,17 @@ export const mountChat = (root: HTMLElement): void => {
   const retryAt = (index: number): void => {
     const m = history[index];
     if (!m || m.role !== 'assistant' || pending || !modelSel.getValue()) return;
-    pending = true;
+    setBusy(true);
     const context = history.slice(0, index).map(toFlat);
     const body = scroll
       .querySelector(`.msg[data-index="${index}"]`)
-      ?.querySelector('.msg-body');
+      ?.querySelector<HTMLElement>('.msg-body');
     if (body) body.innerHTML = '<em>Thinking…</em>';
-    chatSend(context)
+    liveText = '';
+    liveBody = body ?? null;
+    chatSend(context, chatCfg.streamReplies)
       .then((res) => {
+        liveBody = null;
         m.versions.push(res.content);
         m.vi = m.versions.length - 1;
         m.ts = Date.now();
@@ -238,10 +289,12 @@ export const mountChat = (root: HTMLElement): void => {
         save();
       })
       .catch((err: unknown) => {
+        liveBody = null;
         reportDebug('chat.retry', err);
       })
       .finally(() => {
-        pending = false;
+        setBusy(false);
+        liveBody = null;
         renderAll(false);
         input.focus();
       });
@@ -293,6 +346,12 @@ export const mountChat = (root: HTMLElement): void => {
     switch (btn.dataset.act) {
       case 'copy':
         void navigator.clipboard.writeText(m.versions[m.vi]);
+        btn.innerHTML = ICON_CHECK;
+        btn.classList.add('is-done');
+        setTimeout(() => {
+          btn.innerHTML = ICON_COPY;
+          btn.classList.remove('is-done');
+        }, 1200);
         break;
       case 'prev':
         if (m.vi > 0) {
@@ -326,6 +385,7 @@ export const mountChat = (root: HTMLElement): void => {
   const refreshModels = (): void => {
     void Promise.all([localModels(), getSettings()])
       .then(([list, s]) => {
+        chatCfg = { streamReplies: s.streamReplies, notifyOnReply: s.notifyOnReply };
         modelSel.setOptions([
           ...s.localFiles
             .filter((p) => !list.some((m) => m.path === p))

@@ -4,6 +4,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
+//TODO(config): port should be a setting once we run more than one backend
 const PORT = 8391;
 const BIN = process.platform === 'win32' ? 'llama-server.exe' : 'llama-server';
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -51,7 +52,7 @@ const searchBin = (dir: string, depth: number): string | null => {
 };
 
 const findBinary = (): string | null => {
-  const local = searchBin(path.join(homedir(), '.superslm', 'bin'), 3);
+  const local = searchBin(path.join(homedir(), '.lmsuperapp', 'bin'), 3);
   if (local) return local;
   try {
     if (!spawnSync(BIN, ['--version'], { stdio: 'ignore' }).error) return BIN;
@@ -98,6 +99,7 @@ export const startBackend = (modelPath: string): BackendStatus => {
   lastError = null;
   ready = false;
   currentModel = modelPath;
+  //TODO(params): expose --ctx-size, --n-gpu-layers, --threads etc. in Settings > Backend
   const child = spawn(
     bin,
     ['--model', modelPath, '--port', String(PORT), '--ctx-size', '4096'],
@@ -139,27 +141,81 @@ export const waitReady = async (): Promise<void> => {
   throw new Error('Backend start timed out — the model may be too large');
 };
 
+//TODO(sampling): expose temperature/top_p/top_k/system prompt per chat
 export const chatCompletion = async (
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  onChunk?: (text: string) => void
 ): Promise<{ content: string; tokens?: number }> => {
   if (!proc) throw new Error('BACKEND_DOWN: backend is not running');
+  const stream = typeof onChunk === 'function';
   const res = await fetch(`${BASE}/v1/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'local', messages, stream: false })
+    body: JSON.stringify({
+      model: 'local',
+      messages,
+      stream,
+      ...(stream ? { stream_options: { include_usage: true } } : {})
+    })
   });
   if (!res.ok) throw new Error(`Backend request failed: ${res.status}`);
-  const data = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
-    usage?: { completion_tokens?: number };
-  };
+
+  if (!stream) {
+    const data = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+      usage?: { completion_tokens?: number };
+    };
+    touch();
+    return {
+      content: data.choices?.[0]?.message?.content ?? '',
+      tokens: data.usage?.completion_tokens
+    };
+  }
+
+  if (!res.body) throw new Error('Backend stream has no body');
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  let content = '';
+  let tokens: number | undefined;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let cut = buf.indexOf('\n\n');
+    while (cut >= 0) {
+      const block = buf.slice(0, cut);
+      buf = buf.slice(cut + 2);
+      for (const line of block.split('\n')) {
+        if (!line.startsWith('data:')) continue;
+        const payload = line.slice(5).trim();
+        if (!payload || payload === '[DONE]') continue;
+        try {
+          const j = JSON.parse(payload) as {
+            choices?: { delta?: { content?: string } }[];
+            usage?: { completion_tokens?: number };
+          };
+          const delta = j.choices?.[0]?.delta?.content;
+          if (delta) {
+            content += delta;
+            onChunk(delta);
+            touch();
+          }
+          if (typeof j.usage?.completion_tokens === 'number') {
+            tokens = j.usage.completion_tokens;
+          }
+        } catch {
+          // partial JSON in a split chunk — skipped, next block completes it
+        }
+      }
+      cut = buf.indexOf('\n\n');
+    }
+  }
   touch();
-  return {
-    content: data.choices?.[0]?.message?.content ?? '',
-    tokens: data.usage?.completion_tokens
-  };
+  return { content, tokens };
 };
 
+//TODO(lifecycle): graceful shutdown via /health first, kill only as fallback
 export const stopBackend = (): BackendStatus => {
   proc?.kill();
   proc = null;

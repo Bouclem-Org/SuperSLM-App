@@ -18,7 +18,7 @@ export const reportDebug = (label: string, err: unknown): void => {
   const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
   entries.unshift({ time: new Date().toLocaleTimeString(), label, detail });
   if (entries.length > MAX_ENTRIES) entries.pop();
-  document.dispatchEvent(new CustomEvent('superslm:debug'));
+  document.dispatchEvent(new CustomEvent('lmsuperapp:debug'));
 };
 
 export const getDebugEntries = (): readonly DebugEntry[] => entries;

@@ -3,6 +3,7 @@ import bug from '../icons/bug.svg';
 import caret from '../icons/caret.svg';
 import changelog from '../icons/changelog.svg';
 import chat from '../icons/chat.svg';
+import check from '../icons/check.svg';
 import copy from '../icons/copy.svg';
 import desktop from '../icons/desktop.svg';
 import download from '../icons/download.svg';
@@ -27,6 +28,7 @@ const ICONS: Record<string, string> = {
   caret,
   changelog,
   chat,
+  check,
   copy,
   desktop,
   download,

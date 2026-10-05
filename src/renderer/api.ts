@@ -1,16 +1,16 @@
-const requireApi = (): SuperslmApi => {
-  const api = window.superslm;
+const requireApi = (): LmApi => {
+  const api = window.lmsuperapp;
   if (!api) throw new Error('Preload bridge unavailable');
   return api;
 };
 
-export const getAppInfo = (): Promise<SuperslmAppInfo> => requireApi().getAppInfo();
+export const getAppInfo = (): Promise<LmAppInfo> => requireApi().getAppInfo();
 
 export const getChangelog = (): Promise<string> => requireApi().getChangelog();
 
-export const getSettings = (): Promise<SuperslmSettings> => requireApi().getSettings();
+export const getSettings = (): Promise<LmSettings> => requireApi().getSettings();
 
-export const patchSettings = (patch: Partial<SuperslmSettings>): Promise<SuperslmSettings> =>
+export const patchSettings = (patch: Partial<LmSettings>): Promise<LmSettings> =>
   requireApi().patchSettings(patch);
 
 export const pickGguf = (): Promise<string[] | null> => requireApi().pickGguf();
@@ -21,10 +21,10 @@ export const openDevTools = (): Promise<void> => requireApi().openDevTools();
 
 export const listModels = (
   search: string,
-  sort: SuperslmModelSort
-): Promise<SuperslmModelSummary[]> => requireApi().listModels(search, sort);
+  sort: LmModelSort
+): Promise<LmModelSummary[]> => requireApi().listModels(search, sort);
 
-export const getModelDetail = (id: string): Promise<SuperslmModelDetail> =>
+export const getModelDetail = (id: string): Promise<LmModelDetail> =>
   requireApi().getModelDetail(id);
 
 export const downloadModel = (
@@ -38,42 +38,46 @@ export const openExternal = (url: string): Promise<unknown> =>
   requireApi().openExternal(url);
 
 export const onModelProgress = (
-  cb: (p: SuperslmDownloadProgress) => void
+  cb: (p: LmDownloadProgress) => void
 ): (() => void) => requireApi().onModelProgress(cb);
 
-export const getBackendStatus = (): Promise<SuperslmBackendStatus> =>
+export const getBackendStatus = (): Promise<LmBackendStatus> =>
   requireApi().getBackendStatus();
 
-export const startBackend = (modelPath: string): Promise<SuperslmBackendStatus> =>
+export const startBackend = (modelPath: string): Promise<LmBackendStatus> =>
   requireApi().startBackend(modelPath);
 
-export const stopBackend = (): Promise<SuperslmBackendStatus> => requireApi().stopBackend();
+export const stopBackend = (): Promise<LmBackendStatus> => requireApi().stopBackend();
 
-export const localModels = (): Promise<SuperslmLocalModel[]> => requireApi().localModels();
+export const localModels = (): Promise<LmLocalModel[]> => requireApi().localModels();
 
-export const chatsList = (): Promise<SuperslmChatMeta[]> => requireApi().chatsList();
+export const chatsList = (): Promise<LmChatMeta[]> => requireApi().chatsList();
 
 export const chatsSave = (
   id: string,
   title: string,
-  messages: SuperslmStoredMessage[]
-): Promise<{ title: string; updated: number; messages: SuperslmStoredMessage[] }> =>
+  messages: LmStoredMessage[]
+): Promise<{ title: string; updated: number; messages: LmStoredMessage[] }> =>
   requireApi().chatsSave(id, title, messages);
 
 export const chatsLoad = (
   id: string
-): Promise<{ title: string; updated: number; messages: SuperslmStoredMessage[] }> =>
+): Promise<{ title: string; updated: number; messages: LmStoredMessage[] }> =>
   requireApi().chatsLoad(id);
 
 export const chatSend = (
-  messages: SuperslmChatMessage[]
+  messages: LmChatMessage[],
+  stream: boolean
 ): Promise<{ content: string; tokPerSec?: number; approx?: boolean }> =>
-  requireApi().chatSend(messages);
+  requireApi().chatSend(messages, stream);
+
+export const onChatChunk = (cb: (text: string) => void): (() => void) =>
+  requireApi().onChatChunk(cb);
 
 export const installBackend = (): Promise<{ path: string }> => requireApi().installBackend();
 
 export const onBackendProgress = (
-  cb: (p: SuperslmInstallProgress) => void
+  cb: (p: LmInstallProgress) => void
 ): (() => void) => requireApi().onBackendProgress(cb);
 
 export const setZoom = (factor: number): void => requireApi().setZoom(factor);

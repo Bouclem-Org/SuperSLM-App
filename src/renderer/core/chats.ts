@@ -54,6 +54,7 @@ export const refreshSideChats = (): void => {
           `<span class="side-chat-title">${escapeHtml(c.title)}</span>` +
           `<span class="side-chat-day">${fmtDay(c.updated)}</span>`;
         btn.addEventListener('click', () => openSideChat(c.id));
+        //TODO(chats): hover actions — rename + delete (needs chats:delete/chats:rename IPC)
         host.appendChild(btn);
       });
     })

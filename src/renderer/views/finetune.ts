@@ -1,3 +1,4 @@
+//TODO(finetune): dataset picker, base model select, LoRA params, live progress — driven by src/backend
 export const mountFinetune = (root: HTMLElement): void => {
   root.innerHTML = `
     <div class="models">

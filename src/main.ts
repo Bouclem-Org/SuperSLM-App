@@ -17,7 +17,7 @@ import {
   waitReady
 } from './llamacpp';
 import type { ChatMessage } from './llamacpp';
-import type { SuperslmSettings } from './settings';
+import type { LmSettings } from './settings';
 import { ensureStorage, loadSettings, patchSettings, THEME_BG } from './settings';
 
 const HF_API = 'https://huggingface.co/api/models';
@@ -26,6 +26,9 @@ const HF_MAX_SEARCH_LEN = 200;
 const HF_README_MAX = 60000;
 const MODEL_SORTS = new Set(['likes', 'downloads']);
 const PROGRESS_STEP = 1024 * 1024;
+
+let chatInFlight = 0;
+let confirmOnClose = false;
 
 interface HfModel {
   id: string;
@@ -60,6 +63,23 @@ async function createWindow(): Promise<void> {
     }
   });
 
+  win.on('close', (e) => {
+    if (!confirmOnClose || chatInFlight === 0) return;
+    e.preventDefault();
+    void dialog
+      .showMessageBox(win, {
+        type: 'question',
+        buttons: ['Keep waiting', 'Close anyway'],
+        defaultId: 0,
+        cancelId: 0,
+        title: 'Reply in progress',
+        message: 'The model is still generating a reply. Close anyway?'
+      })
+      .then((r) => {
+        if (r.response === 1) win.destroy();
+      });
+  });
+
   void win.loadFile(path.join(__dirname, '..', 'src', 'renderer', 'index.html'));
   if (settings.devtools) win.webContents.openDevTools({ mode: 'detach' });
   win.once('ready-to-show', () => win.show());
@@ -81,9 +101,10 @@ ipcMain.handle('app:changelog', () =>
 
 ipcMain.handle('settings:get', () => loadSettings());
 
-ipcMain.handle('settings:patch', async (_event, patch: Partial<SuperslmSettings>) => {
+ipcMain.handle('settings:patch', async (_event, patch: Partial<LmSettings>) => {
   const next = await patchSettings(patch);
   if (typeof patch?.idleStopMinutes === 'number') setIdleMinutes(next.idleStopMinutes);
+  if (typeof patch?.confirmOnClose === 'boolean') confirmOnClose = next.confirmOnClose;
   if (
     typeof patch?.modelFile === 'string' &&
     getBackendStatus().running &&
@@ -213,6 +234,7 @@ ipcMain.handle('models:detail', async (_event, id: unknown) => {
   };
 });
 
+//TODO(downloads): pause/cancel + resume (HF supports Range), sha256 verify, download queue
 ipcMain.handle('models:download', async (event, modelId: unknown, repo: unknown, file: unknown) => {
   if (
     typeof modelId !== 'string' ||
@@ -238,12 +260,12 @@ ipcMain.handle('models:download', async (event, modelId: unknown, repo: unknown,
       cancelId: 0,
       title: 'Download model',
       message: `Download ${base}?`,
-      detail: `${repo} → ~/.superslm/models/${modelId}/`
+      detail: `${repo} → ~/.lmsuperapp/models/${modelId}/`
     });
     if (response !== 1) return { cancelled: true };
   }
 
-  const destDir = path.join(homedir(), '.superslm', 'models', modelId);
+  const destDir = path.join(homedir(), '.lmsuperapp', 'models', modelId);
   await mkdir(destDir, { recursive: true });
   const dest = path.join(destDir, base);
 
@@ -283,8 +305,9 @@ ipcMain.handle('app:openExternal', (_e, url: unknown) => {
   return shell.openExternal(url);
 });
 
+//TODO(library): models:delete IPC to remove downloaded models from disk
 ipcMain.handle('models:local', async () => {
-  const base = path.join(homedir(), '.superslm', 'models');
+  const base = path.join(homedir(), '.lmsuperapp', 'models');
   const out: { name: string; path: string; size: number }[] = [];
   try {
     for (const org of await readdir(base)) {
@@ -317,26 +340,38 @@ ipcMain.handle('backend:start', (_event, modelPath: unknown) =>
 );
 ipcMain.handle('backend:stop', () => stopBackend());
 
-ipcMain.handle('backend:chat', async (_event, messages: unknown) => {
+ipcMain.handle('backend:chat', async (event, messages: unknown, stream: unknown) => {
   if (!Array.isArray(messages)) throw new Error('Bad messages');
+  const settings = await loadSettings();
   const msgs = cleanMsgs(messages)
-    .slice(-20)
+    .slice(-settings.contextMessages)
     .map(({ role, content }) => ({ role, content }));
   if (!msgs.length) throw new Error('Empty conversation');
-  const settings = await loadSettings();
   if (!settings.modelFile) throw new Error('NO_MODEL: pick a model first');
   if (!getBackendStatus().running) startBackend(settings.modelFile);
   await waitReady();
-  const t0 = Date.now();
-  const { content, tokens } = await chatCompletion(msgs);
-  const secs = (Date.now() - t0) / 1000;
-  const approx = tokens === undefined;
-  const n = tokens ?? Math.max(1, Math.round(content.length / 4));
-  const tokPerSec = secs > 0.05 ? Math.round((n / secs) * 10) / 10 : undefined;
-  return { content, tokPerSec, approx };
+  const sender = event.sender;
+  const onChunk =
+    stream === true
+      ? (text: string): void => {
+          if (!sender.isDestroyed()) sender.send('chat:chunk', text);
+        }
+      : undefined;
+  chatInFlight += 1;
+  try {
+    const t0 = Date.now();
+    const { content, tokens } = await chatCompletion(msgs, onChunk);
+    const secs = (Date.now() - t0) / 1000;
+    const approx = tokens === undefined;
+    const n = tokens ?? Math.max(1, Math.round(content.length / 4));
+    const tokPerSec = secs > 0.05 ? Math.round((n / secs) * 10) / 10 : undefined;
+    return { content, tokPerSec, approx };
+  } finally {
+    chatInFlight -= 1;
+  }
 });
 
-const CHATS_DIR = (): string => path.join(homedir(), '.superslm', 'chats');
+const CHATS_DIR = (): string => path.join(homedir(), '.lmsuperapp', 'chats');
 
 interface StoredMessage extends ChatMessage {
   versions?: string[];
@@ -379,6 +414,7 @@ const cleanMsgs = (messages: unknown): StoredMessage[] =>
         .slice(-100)
     : [];
 
+//TODO(chats): chats:delete + chats:rename IPC, then wire into the sidebar list
 ipcMain.handle('chats:list', async () => {
   try {
     const files = (await readdir(CHATS_DIR())).filter((f) => f.endsWith('.json'));
@@ -433,7 +469,7 @@ const execFileAsync = promisify(execFile);
 ipcMain.handle('backend:install', async (event) => {
   if (process.platform !== 'win32' || process.arch !== 'x64') {
     throw new Error(
-      'Auto-install supports Windows x64 only — place llama-server in ~/.superslm/bin manually'
+      'Auto-install supports Windows x64 only — place llama-server in ~/.lmsuperapp/bin manually'
     );
   }
   const send = (stage: string, received = 0, total = 0): void => {
@@ -443,7 +479,7 @@ ipcMain.handle('backend:install', async (event) => {
   send('fetch');
   const releases = (await (
     await fetch('https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=10', {
-      headers: { 'User-Agent': 'superslm' }
+      headers: { 'User-Agent': 'lmsuperapp' }
     })
   ).json()) as { assets?: { name: string; browser_download_url: string }[] }[];
   const settings = await loadSettings();
@@ -466,7 +502,7 @@ ipcMain.handle('backend:install', async (event) => {
     throw new Error(`No ${settings.backendBuild} build found in recent llama.cpp releases`);
   }
 
-  const binDir = path.join(homedir(), '.superslm', 'bin');
+  const binDir = path.join(homedir(), '.lmsuperapp', 'bin');
   await mkdir(binDir, { recursive: true });
   const zipPath = path.join(binDir, 'llamacpp.zip');
 
@@ -506,7 +542,9 @@ void app.whenReady().then(async () => {
   app.setName('LM SuperApp');
   app.setAppUserModelId('com.lmsuperapp.app');
   await ensureStorage();
-  setIdleMinutes((await loadSettings()).idleStopMinutes);
+  const boot = await loadSettings();
+  setIdleMinutes(boot.idleStopMinutes);
+  confirmOnClose = boot.confirmOnClose;
   await createWindow();
 
   app.on('activate', () => {

@@ -51,6 +51,8 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         run: npx electron-builder --win nsis --publish never
 
+      # TODO(release): code-sign the exe (needs cert secrets), matrix for linux/mac builds,
+      #                  upload the raw exe as a workflow artifact too
       - name: Publish nightly release
         if: steps.check.outputs.skip != 'true'
         shell: bash

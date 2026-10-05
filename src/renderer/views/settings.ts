@@ -20,7 +20,7 @@ import { onTabOpen } from '../core/tabs';
 
 const IDLE_OPTIONS = [0, 5, 10, 15];
 
-const BACKEND_BUILDS: { id: SuperslmBackendBuild; label: string; hint: string }[] = [
+const BACKEND_BUILDS: { id: LmBackendBuild; label: string; hint: string }[] = [
   { id: 'vulkan', label: 'Vulkan', hint: 'GPU — works on most cards' },
   { id: 'cuda-13.4', label: 'CUDA 13.4', hint: 'NVIDIA GPU, newer driver' },
   { id: 'cuda-12.4', label: 'CUDA 12.4', hint: 'NVIDIA GPU, older driver' },
@@ -34,7 +34,7 @@ const TEXT_SIZES: { value: number; label: string; hint: string }[] = [
   { value: 1.3, label: 'XL', hint: 'Biggest text' }
 ];
 
-const THEMES: { id: SuperslmTheme; label: string; hint: string }[] = [
+const THEMES: { id: LmTheme; label: string; hint: string }[] = [
   { id: 'dark', label: 'Dark', hint: 'Warm grey, low light' },
   { id: 'light', label: 'Light', hint: 'Warm paper, daytime' },
   { id: 'midnight', label: 'Midnight', hint: 'Cool near-black' },
@@ -67,12 +67,51 @@ const initGeneral = (): void => {
 
   const fsBox = byId('opt-fullscreen') as HTMLInputElement;
   const confirmBox = byId('opt-confirm-dl') as HTMLInputElement;
+  const streamBox = byId('opt-stream') as HTMLInputElement;
+  const notifyBox = byId('opt-notify') as HTMLInputElement;
+  const contextBox = byId('opt-context') as HTMLInputElement;
+  const confirmCloseBox = byId('opt-confirm-close') as HTMLInputElement;
   getSettings()
     .then((s) => {
       fsBox.checked = s.fullscreen;
       confirmBox.checked = s.confirmDownload;
+      streamBox.checked = s.streamReplies;
+      notifyBox.checked = s.notifyOnReply;
+      contextBox.value = String(s.contextMessages);
+      confirmCloseBox.checked = s.confirmOnClose;
+      document.querySelectorAll<HTMLInputElement>('input[name="defsort"]').forEach((r) => {
+        r.checked = r.value === s.defaultModelSort;
+      });
     })
     .catch((err: unknown) => console.error('Failed to load settings:', err));
+
+  const patchBool = (box: HTMLInputElement, key: keyof LmSettings): void => {
+    box.addEventListener('change', () => {
+      patchSettings({ [key]: box.checked }).catch((err: unknown) =>
+        console.error(`Failed to save ${key}:`, err)
+      );
+    });
+  };
+  patchBool(streamBox, 'streamReplies');
+  patchBool(notifyBox, 'notifyOnReply');
+  patchBool(confirmCloseBox, 'confirmOnClose');
+
+  contextBox.addEventListener('change', () => {
+    const n = Math.round(Number(contextBox.value));
+    if (!Number.isInteger(n) || n < 1 || n > 100) return;
+    contextBox.value = String(n);
+    patchSettings({ contextMessages: n }).catch((err: unknown) =>
+      console.error('Failed to save context size:', err)
+    );
+  });
+
+  document.querySelectorAll<HTMLInputElement>('input[name="defsort"]').forEach((r) => {
+    r.addEventListener('change', () => {
+      patchSettings({ defaultModelSort: r.value as LmModelSort }).catch((err: unknown) =>
+        console.error('Failed to save default sort:', err)
+      );
+    });
+  });
 
   confirmBox.addEventListener('change', () => {
     patchSettings({ confirmDownload: confirmBox.checked }).catch((err: unknown) =>
@@ -157,7 +196,7 @@ const initBackend = (): void => {
 
   document.querySelectorAll<HTMLInputElement>('input[name="bebuild"]').forEach((r) => {
     r.addEventListener('change', () => {
-      patchSettings({ backendBuild: r.value as SuperslmBackendBuild }).catch((err: unknown) =>
+      patchSettings({ backendBuild: r.value as LmBackendBuild }).catch((err: unknown) =>
         console.error('Failed to save backend build:', err)
       );
     });
@@ -225,7 +264,7 @@ const initDebug = (): void => {
       : '<p class="debug-none">No errors captured yet.</p>';
   };
 
-  document.addEventListener('superslm:debug', renderEntries);
+  document.addEventListener('lmsuperapp:debug', renderEntries);
   renderEntries();
 };
 
@@ -279,6 +318,43 @@ export const mountSettings = (root: HTMLElement): void => {
           </div>
 
           <div class="section-group">
+            <h3 class="section-title">Chat</h3>
+            <label class="setting-row">
+              <input type="checkbox" id="opt-stream" />
+              <span>Stream replies</span>
+              <small>Tokens appear live as the model writes</small>
+            </label>
+            <label class="setting-row">
+              <input type="checkbox" id="opt-notify" />
+              <span>Notify on reply</span>
+              <small>Desktop notification when a reply finishes while unfocused</small>
+            </label>
+            <label class="setting-row">
+              <input type="number" id="opt-context" min="1" max="100" step="1" />
+              <span>Messages in context</span>
+              <small>Past messages sent to the model (1–100)</small>
+            </label>
+            <label class="setting-row">
+              <input type="checkbox" id="opt-confirm-close" />
+              <span>Confirm on close</span>
+              <small>Ask before closing while a reply is generating</small>
+            </label>
+          </div>
+
+          <div class="section-group">
+            <h3 class="section-title">Models</h3>
+            <p class="settings-note">Default sort on the Models page</p>
+            <label class="setting-row">
+              <input type="radio" name="defsort" value="likes" />
+              <span>Most liked</span>
+            </label>
+            <label class="setting-row">
+              <input type="radio" name="defsort" value="downloads" />
+              <span>Most downloaded</span>
+            </label>
+          </div>
+
+          <div class="section-group">
             <h3 class="section-title">Downloads</h3>
             <label class="setting-row">
               <input type="checkbox" id="opt-confirm-dl" checked />
@@ -297,6 +373,7 @@ export const mountSettings = (root: HTMLElement): void => {
             </dl>
           </div>
         </div>
+        <!-- TODO(settings): import/export settings.json, llama.cpp update checker -->
 
         <div class="settings-page" id="settings-theme">
           <h2 class="page-title">Theme</h2>
@@ -325,7 +402,7 @@ export const mountSettings = (root: HTMLElement): void => {
             </div>
           </div>
 
-          <p class="settings-note">Saved to ~/.superslm/settings.json</p>
+          <p class="settings-note">Saved to ~/.lmsuperapp/settings.json</p>
         </div>
 
         <div class="settings-page" id="settings-backend">
