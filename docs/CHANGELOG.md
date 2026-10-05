@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1 - 2026-10-05
+
+- Chat replies stream live — tokens appear as the model writes (SSE via llama-server)
+- New settings: Stream replies, Notify on reply (desktop notification when a reply lands while unfocused), Messages in context (1–100, was fixed at 20), Confirm on close while generating, Default model sort
+- UI feedback pass: send button spins while generating, all copy buttons flash a check, buttons press in, tabs/dropdowns animate in, thinking bubble pulses
+- Renamed internals SLM → LM: bridge `window.lmsuperapp`, `Lm*` types, data dir `~/.lmsuperapp` (auto-migrates `~/.superslm` and remaps stored model paths)
+- Fixed Settings: a missing `</div>` nested the Theme/Backend/Changelog/Debug pages inside General so only General worked
+- TODO comments planted across the codebase marking planned work
+
 ## 0.2.0 - 2026-10-03
 
 - New Export tab in the `+` More menu (placeholder — later: publish to Hugging Face, convert to GGUF)

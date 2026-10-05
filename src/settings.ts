@@ -16,6 +16,11 @@ export interface LmSettings {
   fontScale: number;
   idleStopMinutes: number;
   backendBuild: BackendBuild;
+  streamReplies: boolean;
+  notifyOnReply: boolean;
+  contextMessages: number;
+  confirmOnClose: boolean;
+  defaultModelSort: 'likes' | 'downloads';
 }
 
 export type BackendBuild = 'cpu' | 'vulkan' | 'cuda-12.4' | 'cuda-13.4';
@@ -32,7 +37,12 @@ const DEFAULT_SETTINGS: LmSettings = {
   confirmDownload: true,
   fontScale: 1,
   idleStopMinutes: 10,
-  backendBuild: 'vulkan'
+  backendBuild: 'vulkan',
+  streamReplies: true,
+  notifyOnReply: false,
+  contextMessages: 20,
+  confirmOnClose: false,
+  defaultModelSort: 'likes'
 };
 
 const THEME_VALUES: readonly ThemeName[] = ['dark', 'light', 'midnight', 'sand', 'forest'];
@@ -119,6 +129,20 @@ export async function patchSettings(
     BACKEND_BUILDS.has(patch.backendBuild as BackendBuild)
   ) {
     next.backendBuild = patch.backendBuild as BackendBuild;
+  }
+  if (typeof patch.streamReplies === 'boolean') next.streamReplies = patch.streamReplies;
+  if (typeof patch.notifyOnReply === 'boolean') next.notifyOnReply = patch.notifyOnReply;
+  if (typeof patch.confirmOnClose === 'boolean') next.confirmOnClose = patch.confirmOnClose;
+  if (
+    typeof patch.contextMessages === 'number' &&
+    Number.isInteger(patch.contextMessages) &&
+    patch.contextMessages >= 1 &&
+    patch.contextMessages <= 100
+  ) {
+    next.contextMessages = patch.contextMessages;
+  }
+  if (patch.defaultModelSort === 'likes' || patch.defaultModelSort === 'downloads') {
+    next.defaultModelSort = patch.defaultModelSort;
   }
   await ensureStorage();
   await writeFile(settingsPath(), JSON.stringify(next, null, 2) + '\n', 'utf8');

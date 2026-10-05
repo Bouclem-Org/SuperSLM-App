@@ -67,12 +67,51 @@ const initGeneral = (): void => {
 
   const fsBox = byId('opt-fullscreen') as HTMLInputElement;
   const confirmBox = byId('opt-confirm-dl') as HTMLInputElement;
+  const streamBox = byId('opt-stream') as HTMLInputElement;
+  const notifyBox = byId('opt-notify') as HTMLInputElement;
+  const contextBox = byId('opt-context') as HTMLInputElement;
+  const confirmCloseBox = byId('opt-confirm-close') as HTMLInputElement;
   getSettings()
     .then((s) => {
       fsBox.checked = s.fullscreen;
       confirmBox.checked = s.confirmDownload;
+      streamBox.checked = s.streamReplies;
+      notifyBox.checked = s.notifyOnReply;
+      contextBox.value = String(s.contextMessages);
+      confirmCloseBox.checked = s.confirmOnClose;
+      document.querySelectorAll<HTMLInputElement>('input[name="defsort"]').forEach((r) => {
+        r.checked = r.value === s.defaultModelSort;
+      });
     })
     .catch((err: unknown) => console.error('Failed to load settings:', err));
+
+  const patchBool = (box: HTMLInputElement, key: keyof LmSettings): void => {
+    box.addEventListener('change', () => {
+      patchSettings({ [key]: box.checked }).catch((err: unknown) =>
+        console.error(`Failed to save ${key}:`, err)
+      );
+    });
+  };
+  patchBool(streamBox, 'streamReplies');
+  patchBool(notifyBox, 'notifyOnReply');
+  patchBool(confirmCloseBox, 'confirmOnClose');
+
+  contextBox.addEventListener('change', () => {
+    const n = Math.round(Number(contextBox.value));
+    if (!Number.isInteger(n) || n < 1 || n > 100) return;
+    contextBox.value = String(n);
+    patchSettings({ contextMessages: n }).catch((err: unknown) =>
+      console.error('Failed to save context size:', err)
+    );
+  });
+
+  document.querySelectorAll<HTMLInputElement>('input[name="defsort"]').forEach((r) => {
+    r.addEventListener('change', () => {
+      patchSettings({ defaultModelSort: r.value as LmModelSort }).catch((err: unknown) =>
+        console.error('Failed to save default sort:', err)
+      );
+    });
+  });
 
   confirmBox.addEventListener('change', () => {
     patchSettings({ confirmDownload: confirmBox.checked }).catch((err: unknown) =>
@@ -279,6 +318,43 @@ export const mountSettings = (root: HTMLElement): void => {
           </div>
 
           <div class="section-group">
+            <h3 class="section-title">Chat</h3>
+            <label class="setting-row">
+              <input type="checkbox" id="opt-stream" />
+              <span>Stream replies</span>
+              <small>Tokens appear live as the model writes</small>
+            </label>
+            <label class="setting-row">
+              <input type="checkbox" id="opt-notify" />
+              <span>Notify on reply</span>
+              <small>Desktop notification when a reply finishes while unfocused</small>
+            </label>
+            <label class="setting-row">
+              <input type="number" id="opt-context" min="1" max="100" step="1" />
+              <span>Messages in context</span>
+              <small>Past messages sent to the model (1–100)</small>
+            </label>
+            <label class="setting-row">
+              <input type="checkbox" id="opt-confirm-close" />
+              <span>Confirm on close</span>
+              <small>Ask before closing while a reply is generating</small>
+            </label>
+          </div>
+
+          <div class="section-group">
+            <h3 class="section-title">Models</h3>
+            <p class="settings-note">Default sort on the Models page</p>
+            <label class="setting-row">
+              <input type="radio" name="defsort" value="likes" />
+              <span>Most liked</span>
+            </label>
+            <label class="setting-row">
+              <input type="radio" name="defsort" value="downloads" />
+              <span>Most downloaded</span>
+            </label>
+          </div>
+
+          <div class="section-group">
             <h3 class="section-title">Downloads</h3>
             <label class="setting-row">
               <input type="checkbox" id="opt-confirm-dl" checked />
@@ -296,7 +372,8 @@ export const mountSettings = (root: HTMLElement): void => {
               <div class="about-row"><dt>Platform</dt><dd id="set-platform">—</dd></div>
             </dl>
           </div>
-          <!-- TODO(settings): import/export settings.json, llama.cpp update checker -->
+        </div>
+        <!-- TODO(settings): import/export settings.json, llama.cpp update checker -->
 
         <div class="settings-page" id="settings-theme">
           <h2 class="page-title">Theme</h2>

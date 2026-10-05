@@ -13,6 +13,11 @@ interface LmSettings {
   fontScale: number;
   idleStopMinutes: number;
   backendBuild: LmBackendBuild;
+  streamReplies: boolean;
+  notifyOnReply: boolean;
+  contextMessages: number;
+  confirmOnClose: boolean;
+  defaultModelSort: LmModelSort;
 }
 
 interface LmAppInfo {
@@ -132,8 +137,10 @@ interface LmApi {
     id: string
   ) => Promise<{ title: string; updated: number; messages: LmStoredMessage[] }>;
   chatSend: (
-    messages: LmChatMessage[]
+    messages: LmChatMessage[],
+    stream: boolean
   ) => Promise<{ content: string; tokPerSec?: number; approx?: boolean }>;
+  onChatChunk: (cb: (text: string) => void) => () => void;
   installBackend: () => Promise<{ path: string }>;
   onBackendProgress: (cb: (p: LmInstallProgress) => void) => () => void;
   setZoom: (factor: number) => void;

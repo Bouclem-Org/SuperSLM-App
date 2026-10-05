@@ -31,8 +31,13 @@ contextBridge.exposeInMainWorld('lmsuperapp', {
   startBackend: (modelPath: string): Promise<unknown> =>
     ipcRenderer.invoke('backend:start', modelPath),
   stopBackend: (): Promise<unknown> => ipcRenderer.invoke('backend:stop'),
-  chatSend: (messages: unknown): Promise<unknown> =>
-    ipcRenderer.invoke('backend:chat', messages),
+  chatSend: (messages: unknown, stream: boolean): Promise<unknown> =>
+    ipcRenderer.invoke('backend:chat', messages, stream),
+  onChatChunk: (cb: (t: string) => void) => {
+    const listener = (_event: unknown, text: string): void => cb(text);
+    ipcRenderer.on('chat:chunk', listener);
+    return () => ipcRenderer.removeListener('chat:chunk', listener);
+  },
   installBackend: (): Promise<unknown> => ipcRenderer.invoke('backend:install'),
   onBackendProgress: (cb: (p: unknown) => void) => {
     const listener = (_event: unknown, payload: unknown): void => cb(payload);

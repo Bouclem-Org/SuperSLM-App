@@ -4,6 +4,7 @@ import {
   chatsSave,
   getSettings,
   localModels,
+  onChatChunk,
   openExternal,
   patchSettings
 } from '../api';
@@ -114,12 +115,40 @@ export const mountChat = (root: HTMLElement): void => {
   let history: UIMsg[] = [];
   let chatId = newChatId();
   let pending = false;
+  let chatCfg = { streamReplies: true, notifyOnReply: false };
 
   const setBusy = (on: boolean): void => {
     pending = on;
     sendBtn.disabled = on;
     sendBtn.classList.toggle('is-busy', on);
     input.disabled = on;
+  };
+
+  // streamed tokens land in liveBody while a reply is generating
+  let liveBody: HTMLElement | null = null;
+  let liveText = '';
+  let liveQueued = false;
+
+  onChatChunk((text) => {
+    if (!liveBody) return;
+    liveText += text;
+    if (liveQueued) return;
+    liveQueued = true;
+    requestAnimationFrame(() => {
+      liveQueued = false;
+      if (!liveBody) return;
+      liveBody.innerHTML = renderMarkdown(liveText);
+      scroll.scrollTop = scroll.scrollHeight;
+    });
+  });
+
+  const notifyReply = (content: string): void => {
+    if (!chatCfg.notifyOnReply || document.hasFocus()) return;
+    try {
+      new Notification('LM SuperApp', { body: content.slice(0, 120) || 'Reply ready' });
+    } catch (err) {
+      reportDebug('chat.notify', err);
+    }
   };
 
   const save = (): void => {
@@ -204,9 +233,12 @@ export const mountChat = (root: HTMLElement): void => {
 
   const runCompletion = (popOnError: boolean): void => {
     setBusy(true);
+    liveText = '';
     const thinking = addMsg('thinking', '<em>Starting model / thinking…</em>');
-    chatSend(history.map(toFlat))
+    liveBody = thinking.querySelector<HTMLElement>('.msg-body');
+    chatSend(history.map(toFlat), chatCfg.streamReplies)
       .then((res) => {
+        liveBody = null;
         thinking.remove();
         history.push({
           role: 'assistant',
@@ -217,8 +249,10 @@ export const mountChat = (root: HTMLElement): void => {
         });
         renderAll();
         save();
+        notifyReply(res.content);
       })
       .catch((err: unknown) => {
+        liveBody = null;
         reportDebug('chat.send', err);
         thinking.className = 'msg msg-error';
         thinking.innerHTML = `<div class="msg-body"><p>Chat failed — ${escapeHtml(
@@ -240,10 +274,13 @@ export const mountChat = (root: HTMLElement): void => {
     const context = history.slice(0, index).map(toFlat);
     const body = scroll
       .querySelector(`.msg[data-index="${index}"]`)
-      ?.querySelector('.msg-body');
+      ?.querySelector<HTMLElement>('.msg-body');
     if (body) body.innerHTML = '<em>Thinking…</em>';
-    chatSend(context)
+    liveText = '';
+    liveBody = body ?? null;
+    chatSend(context, chatCfg.streamReplies)
       .then((res) => {
+        liveBody = null;
         m.versions.push(res.content);
         m.vi = m.versions.length - 1;
         m.ts = Date.now();
@@ -252,10 +289,12 @@ export const mountChat = (root: HTMLElement): void => {
         save();
       })
       .catch((err: unknown) => {
+        liveBody = null;
         reportDebug('chat.retry', err);
       })
       .finally(() => {
         setBusy(false);
+        liveBody = null;
         renderAll(false);
         input.focus();
       });
@@ -346,6 +385,7 @@ export const mountChat = (root: HTMLElement): void => {
   const refreshModels = (): void => {
     void Promise.all([localModels(), getSettings()])
       .then(([list, s]) => {
+        chatCfg = { streamReplies: s.streamReplies, notifyOnReply: s.notifyOnReply };
         modelSel.setOptions([
           ...s.localFiles
             .filter((p) => !list.some((m) => m.path === p))

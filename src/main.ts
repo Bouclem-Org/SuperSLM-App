@@ -27,6 +27,9 @@ const HF_README_MAX = 60000;
 const MODEL_SORTS = new Set(['likes', 'downloads']);
 const PROGRESS_STEP = 1024 * 1024;
 
+let chatInFlight = 0;
+let confirmOnClose = false;
+
 interface HfModel {
   id: string;
   author?: string;
@@ -60,6 +63,23 @@ async function createWindow(): Promise<void> {
     }
   });
 
+  win.on('close', (e) => {
+    if (!confirmOnClose || chatInFlight === 0) return;
+    e.preventDefault();
+    void dialog
+      .showMessageBox(win, {
+        type: 'question',
+        buttons: ['Keep waiting', 'Close anyway'],
+        defaultId: 0,
+        cancelId: 0,
+        title: 'Reply in progress',
+        message: 'The model is still generating a reply. Close anyway?'
+      })
+      .then((r) => {
+        if (r.response === 1) win.destroy();
+      });
+  });
+
   void win.loadFile(path.join(__dirname, '..', 'src', 'renderer', 'index.html'));
   if (settings.devtools) win.webContents.openDevTools({ mode: 'detach' });
   win.once('ready-to-show', () => win.show());
@@ -84,6 +104,7 @@ ipcMain.handle('settings:get', () => loadSettings());
 ipcMain.handle('settings:patch', async (_event, patch: Partial<LmSettings>) => {
   const next = await patchSettings(patch);
   if (typeof patch?.idleStopMinutes === 'number') setIdleMinutes(next.idleStopMinutes);
+  if (typeof patch?.confirmOnClose === 'boolean') confirmOnClose = next.confirmOnClose;
   if (
     typeof patch?.modelFile === 'string' &&
     getBackendStatus().running &&
@@ -319,23 +340,35 @@ ipcMain.handle('backend:start', (_event, modelPath: unknown) =>
 );
 ipcMain.handle('backend:stop', () => stopBackend());
 
-ipcMain.handle('backend:chat', async (_event, messages: unknown) => {
+ipcMain.handle('backend:chat', async (event, messages: unknown, stream: unknown) => {
   if (!Array.isArray(messages)) throw new Error('Bad messages');
+  const settings = await loadSettings();
   const msgs = cleanMsgs(messages)
-    .slice(-20)
+    .slice(-settings.contextMessages)
     .map(({ role, content }) => ({ role, content }));
   if (!msgs.length) throw new Error('Empty conversation');
-  const settings = await loadSettings();
   if (!settings.modelFile) throw new Error('NO_MODEL: pick a model first');
   if (!getBackendStatus().running) startBackend(settings.modelFile);
   await waitReady();
-  const t0 = Date.now();
-  const { content, tokens } = await chatCompletion(msgs);
-  const secs = (Date.now() - t0) / 1000;
-  const approx = tokens === undefined;
-  const n = tokens ?? Math.max(1, Math.round(content.length / 4));
-  const tokPerSec = secs > 0.05 ? Math.round((n / secs) * 10) / 10 : undefined;
-  return { content, tokPerSec, approx };
+  const sender = event.sender;
+  const onChunk =
+    stream === true
+      ? (text: string): void => {
+          if (!sender.isDestroyed()) sender.send('chat:chunk', text);
+        }
+      : undefined;
+  chatInFlight += 1;
+  try {
+    const t0 = Date.now();
+    const { content, tokens } = await chatCompletion(msgs, onChunk);
+    const secs = (Date.now() - t0) / 1000;
+    const approx = tokens === undefined;
+    const n = tokens ?? Math.max(1, Math.round(content.length / 4));
+    const tokPerSec = secs > 0.05 ? Math.round((n / secs) * 10) / 10 : undefined;
+    return { content, tokPerSec, approx };
+  } finally {
+    chatInFlight -= 1;
+  }
 });
 
 const CHATS_DIR = (): string => path.join(homedir(), '.lmsuperapp', 'chats');
@@ -509,7 +542,9 @@ void app.whenReady().then(async () => {
   app.setName('LM SuperApp');
   app.setAppUserModelId('com.lmsuperapp.app');
   await ensureStorage();
-  setIdleMinutes((await loadSettings()).idleStopMinutes);
+  const boot = await loadSettings();
+  setIdleMinutes(boot.idleStopMinutes);
+  confirmOnClose = boot.confirmOnClose;
   await createWindow();
 
   app.on('activate', () => {

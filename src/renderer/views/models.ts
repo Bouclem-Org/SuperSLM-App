@@ -1,6 +1,7 @@
 import {
   downloadModel,
   getModelDetail,
+  getSettings,
   listModels,
   onModelProgress,
   openExternal,
@@ -88,6 +89,12 @@ export const mountModels = (root: HTMLElement): void => {
   const sortBtns = Array.from(root.querySelectorAll<HTMLButtonElement>('.sort-btn'));
 
   let sort: LmModelSort = 'likes';
+  void getSettings()
+    .then((s) => {
+      sort = s.defaultModelSort;
+      sortBtns.forEach((b) => b.classList.toggle('is-active', b.dataset.sort === sort));
+    })
+    .catch((err: unknown) => console.error('Failed to load settings:', err));
   let loadedOnce = false;
   let requestId = 0;
   let timer = 0;

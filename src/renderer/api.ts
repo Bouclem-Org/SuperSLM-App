@@ -66,9 +66,13 @@ export const chatsLoad = (
   requireApi().chatsLoad(id);
 
 export const chatSend = (
-  messages: LmChatMessage[]
+  messages: LmChatMessage[],
+  stream: boolean
 ): Promise<{ content: string; tokPerSec?: number; approx?: boolean }> =>
-  requireApi().chatSend(messages);
+  requireApi().chatSend(messages, stream);
+
+export const onChatChunk = (cb: (text: string) => void): (() => void) =>
+  requireApi().onChatChunk(cb);
 
 export const installBackend = (): Promise<{ path: string }> => requireApi().installBackend();
 
