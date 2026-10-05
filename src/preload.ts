@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, webFrame } from 'electron';
 
-contextBridge.exposeInMainWorld('superslm', {
+contextBridge.exposeInMainWorld('lmsuperapp', {
   getAppInfo: (): Promise<unknown> => ipcRenderer.invoke('app:info'),
   getChangelog: (): Promise<unknown> => ipcRenderer.invoke('app:changelog'),
   getSettings: (): Promise<unknown> => ipcRenderer.invoke('settings:get'),

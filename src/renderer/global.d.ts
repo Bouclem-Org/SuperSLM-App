@@ -1,9 +1,9 @@
-type SuperslmTheme = 'dark' | 'light' | 'midnight' | 'sand' | 'forest';
+type LmTheme = 'dark' | 'light' | 'midnight' | 'sand' | 'forest';
 
-type SuperslmBackendBuild = 'cpu' | 'vulkan' | 'cuda-12.4' | 'cuda-13.4';
+type LmBackendBuild = 'cpu' | 'vulkan' | 'cuda-12.4' | 'cuda-13.4';
 
-interface SuperslmSettings {
-  theme: SuperslmTheme;
+interface LmSettings {
+  theme: LmTheme;
   fullscreen: boolean;
   debug: boolean;
   devtools: boolean;
@@ -12,18 +12,18 @@ interface SuperslmSettings {
   confirmDownload: boolean;
   fontScale: number;
   idleStopMinutes: number;
-  backendBuild: SuperslmBackendBuild;
+  backendBuild: LmBackendBuild;
 }
 
-interface SuperslmAppInfo {
+interface LmAppInfo {
   appVersion: string;
   platform: string;
   versions: Record<string, string>;
 }
 
-type SuperslmModelSort = 'likes' | 'downloads';
+type LmModelSort = 'likes' | 'downloads';
 
-interface SuperslmModelSummary {
+interface LmModelSummary {
   id: string;
   downloads: number;
   likes: number;
@@ -31,13 +31,13 @@ interface SuperslmModelSummary {
   updated: string;
 }
 
-interface SuperslmModelFile {
+interface LmModelFile {
   repo: string;
   name: string;
   size: number | null;
 }
 
-interface SuperslmModelDetail {
+interface LmModelDetail {
   id: string;
   author: string;
   pipeline: string;
@@ -48,10 +48,10 @@ interface SuperslmModelDetail {
   tags: string[];
   readme: string | null;
   readmeTruncated: boolean;
-  files: SuperslmModelFile[];
+  files: LmModelFile[];
 }
 
-interface SuperslmDownloadProgress {
+interface LmDownloadProgress {
   file: string;
   received: number;
   total: number;
@@ -60,7 +60,7 @@ interface SuperslmDownloadProgress {
   error?: string;
 }
 
-interface SuperslmBackendStatus {
+interface LmBackendStatus {
   binary: string | null;
   running: boolean;
   ready: boolean;
@@ -69,7 +69,7 @@ interface SuperslmBackendStatus {
   lastError: string | null;
 }
 
-interface SuperslmStoredMessage {
+interface LmStoredMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   versions?: string[];
@@ -78,67 +78,67 @@ interface SuperslmStoredMessage {
   stats?: { tps?: number; approx?: boolean }[];
 }
 
-interface SuperslmChatMeta {
+interface LmChatMeta {
   id: string;
   title: string;
   updated: number;
 }
 
-interface SuperslmLocalModel {
+interface LmLocalModel {
   name: string;
   path: string;
   size: number;
 }
 
-interface SuperslmChatMessage {
+interface LmChatMessage {
   role: string;
   content: string;
 }
 
-interface SuperslmInstallProgress {
+interface LmInstallProgress {
   stage: 'fetch' | 'download' | 'extract' | 'done';
   received: number;
   total: number;
 }
 
-interface SuperslmApi {
-  getAppInfo: () => Promise<SuperslmAppInfo>;
+interface LmApi {
+  getAppInfo: () => Promise<LmAppInfo>;
   getChangelog: () => Promise<string>;
-  getSettings: () => Promise<SuperslmSettings>;
-  patchSettings: (patch: Partial<SuperslmSettings>) => Promise<SuperslmSettings>;
+  getSettings: () => Promise<LmSettings>;
+  patchSettings: (patch: Partial<LmSettings>) => Promise<LmSettings>;
   pickGguf: () => Promise<string[] | null>;
   setFullscreen: (on: boolean) => Promise<void>;
   openDevTools: () => Promise<void>;
-  listModels: (search: string, sort: SuperslmModelSort) => Promise<SuperslmModelSummary[]>;
-  getModelDetail: (id: string) => Promise<SuperslmModelDetail>;
+  listModels: (search: string, sort: LmModelSort) => Promise<LmModelSummary[]>;
+  getModelDetail: (id: string) => Promise<LmModelDetail>;
   downloadModel: (
     id: string,
     repo: string,
     file: string
   ) => Promise<{ path?: string; cancelled?: boolean }>;
   openExternal: (url: string) => Promise<unknown>;
-  onModelProgress: (cb: (p: SuperslmDownloadProgress) => void) => () => void;
-  getBackendStatus: () => Promise<SuperslmBackendStatus>;
-  startBackend: (modelPath: string) => Promise<SuperslmBackendStatus>;
-  stopBackend: () => Promise<SuperslmBackendStatus>;
-  localModels: () => Promise<SuperslmLocalModel[]>;
-  chatsList: () => Promise<SuperslmChatMeta[]>;
+  onModelProgress: (cb: (p: LmDownloadProgress) => void) => () => void;
+  getBackendStatus: () => Promise<LmBackendStatus>;
+  startBackend: (modelPath: string) => Promise<LmBackendStatus>;
+  stopBackend: () => Promise<LmBackendStatus>;
+  localModels: () => Promise<LmLocalModel[]>;
+  chatsList: () => Promise<LmChatMeta[]>;
   chatsSave: (
     id: string,
     title: string,
-    messages: SuperslmStoredMessage[]
-  ) => Promise<{ title: string; updated: number; messages: SuperslmStoredMessage[] }>;
+    messages: LmStoredMessage[]
+  ) => Promise<{ title: string; updated: number; messages: LmStoredMessage[] }>;
   chatsLoad: (
     id: string
-  ) => Promise<{ title: string; updated: number; messages: SuperslmStoredMessage[] }>;
+  ) => Promise<{ title: string; updated: number; messages: LmStoredMessage[] }>;
   chatSend: (
-    messages: SuperslmChatMessage[]
+    messages: LmChatMessage[]
   ) => Promise<{ content: string; tokPerSec?: number; approx?: boolean }>;
   installBackend: () => Promise<{ path: string }>;
-  onBackendProgress: (cb: (p: SuperslmInstallProgress) => void) => () => void;
+  onBackendProgress: (cb: (p: LmInstallProgress) => void) => () => void;
   setZoom: (factor: number) => void;
 }
 
 interface Window {
-  superslm?: SuperslmApi;
+  lmsuperapp?: LmApi;
 }

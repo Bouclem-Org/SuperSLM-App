@@ -15,7 +15,7 @@ export const mountHome = (root: HTMLElement): void => {
   root.innerHTML = `
     <p class="eyebrow" id="greeting">Welcome</p>
     <h1 class="title">LM SuperApp</h1>
-    <p class="lede">A desktop home for small language models.</p>
+    <p class="lede">A desktop home for language models.</p>
 
     <div class="home-grid">
       <button class="home-tile" type="button" data-go="library">

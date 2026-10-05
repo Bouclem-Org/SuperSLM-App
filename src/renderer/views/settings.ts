@@ -20,7 +20,7 @@ import { onTabOpen } from '../core/tabs';
 
 const IDLE_OPTIONS = [0, 5, 10, 15];
 
-const BACKEND_BUILDS: { id: SuperslmBackendBuild; label: string; hint: string }[] = [
+const BACKEND_BUILDS: { id: LmBackendBuild; label: string; hint: string }[] = [
   { id: 'vulkan', label: 'Vulkan', hint: 'GPU — works on most cards' },
   { id: 'cuda-13.4', label: 'CUDA 13.4', hint: 'NVIDIA GPU, newer driver' },
   { id: 'cuda-12.4', label: 'CUDA 12.4', hint: 'NVIDIA GPU, older driver' },
@@ -34,7 +34,7 @@ const TEXT_SIZES: { value: number; label: string; hint: string }[] = [
   { value: 1.3, label: 'XL', hint: 'Biggest text' }
 ];
 
-const THEMES: { id: SuperslmTheme; label: string; hint: string }[] = [
+const THEMES: { id: LmTheme; label: string; hint: string }[] = [
   { id: 'dark', label: 'Dark', hint: 'Warm grey, low light' },
   { id: 'light', label: 'Light', hint: 'Warm paper, daytime' },
   { id: 'midnight', label: 'Midnight', hint: 'Cool near-black' },
@@ -157,7 +157,7 @@ const initBackend = (): void => {
 
   document.querySelectorAll<HTMLInputElement>('input[name="bebuild"]').forEach((r) => {
     r.addEventListener('change', () => {
-      patchSettings({ backendBuild: r.value as SuperslmBackendBuild }).catch((err: unknown) =>
+      patchSettings({ backendBuild: r.value as LmBackendBuild }).catch((err: unknown) =>
         console.error('Failed to save backend build:', err)
       );
     });
@@ -225,7 +225,7 @@ const initDebug = (): void => {
       : '<p class="debug-none">No errors captured yet.</p>';
   };
 
-  document.addEventListener('superslm:debug', renderEntries);
+  document.addEventListener('lmsuperapp:debug', renderEntries);
   renderEntries();
 };
 
@@ -325,7 +325,7 @@ export const mountSettings = (root: HTMLElement): void => {
             </div>
           </div>
 
-          <p class="settings-note">Saved to ~/.superslm/settings.json</p>
+          <p class="settings-note">Saved to ~/.lmsuperapp/settings.json</p>
         </div>
 
         <div class="settings-page" id="settings-backend">

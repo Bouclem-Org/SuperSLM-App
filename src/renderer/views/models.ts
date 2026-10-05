@@ -87,7 +87,7 @@ export const mountModels = (root: HTMLElement): void => {
   );
   const sortBtns = Array.from(root.querySelectorAll<HTMLButtonElement>('.sort-btn'));
 
-  let sort: SuperslmModelSort = 'likes';
+  let sort: LmModelSort = 'likes';
   let loadedOnce = false;
   let requestId = 0;
   let timer = 0;
@@ -98,7 +98,7 @@ export const mountModels = (root: HTMLElement): void => {
     status.classList.toggle('is-error', isError);
   };
 
-  const renderRows = (models: SuperslmModelSummary[]): void => {
+  const renderRows = (models: LmModelSummary[]): void => {
     list.innerHTML = '';
     models.forEach((m, i) => {
       const li = document.createElement('li');
@@ -170,7 +170,7 @@ export const mountModels = (root: HTMLElement): void => {
     });
   };
 
-  const renderDetail = (d: SuperslmModelDetail): void => {
+  const renderDetail = (d: LmModelDetail): void => {
     detail.innerHTML = `
       <button class="detail-back" id="detail-back" type="button">← Back to list</button>
       <h2 class="page-title detail-title">
@@ -205,7 +205,14 @@ export const mountModels = (root: HTMLElement): void => {
 
     byId<HTMLButtonElement>('detail-back').addEventListener('click', closeDetail);
     byId<HTMLButtonElement>('detail-copy').addEventListener('click', () => {
+      const btn = byId<HTMLButtonElement>('detail-copy');
       void navigator.clipboard.writeText(d.id);
+      btn.innerHTML = icon('check');
+      btn.classList.add('is-done');
+      setTimeout(() => {
+        btn.innerHTML = ICON_COPY;
+        btn.classList.remove('is-done');
+      }, 1200);
     });
     detail.querySelectorAll<HTMLButtonElement>('.dl-btn').forEach((btn) => {
       wireDownload(btn, d.id, btn.dataset.repo ?? d.id, btn.dataset.dl ?? '');
@@ -270,7 +277,7 @@ export const mountModels = (root: HTMLElement): void => {
 
   sortBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
-      const next = (btn.dataset.sort ?? 'likes') as SuperslmModelSort;
+      const next = (btn.dataset.sort ?? 'likes') as LmModelSort;
       if (next === sort) return;
       sort = next;
       sortBtns.forEach((b) => b.classList.toggle('is-active', b === btn));

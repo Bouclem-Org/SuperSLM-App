@@ -20,6 +20,7 @@ const ICON_SEND = icon('send');
 const ICON_COPY = icon('copy');
 const ICON_RETRY = icon('retry');
 const ICON_EDIT = icon('edit');
+const ICON_CHECK = icon('check');
 
 interface MsgStat {
   tps?: number;
@@ -36,7 +37,7 @@ interface UIMsg {
 
 const newChatId = (): string => `c${Date.now().toString(36)}`;
 
-const toUIMsg = (m: SuperslmStoredMessage): UIMsg => {
+const toUIMsg = (m: LmStoredMessage): UIMsg => {
   const versions =
     Array.isArray(m.versions) && m.versions.length ? m.versions : [m.content];
   return {
@@ -48,12 +49,12 @@ const toUIMsg = (m: SuperslmStoredMessage): UIMsg => {
   };
 };
 
-const toFlat = (m: UIMsg): SuperslmChatMessage => ({
+const toFlat = (m: UIMsg): LmChatMessage => ({
   role: m.role,
   content: m.versions[m.vi]
 });
 
-const toStored = (m: UIMsg): SuperslmStoredMessage => ({
+const toStored = (m: UIMsg): LmStoredMessage => ({
   role: m.role,
   content: m.versions[m.vi],
   versions: m.versions,
@@ -104,6 +105,7 @@ export const mountChat = (root: HTMLElement): void => {
   let empty = byId('chat-empty');
   const form = byId('chat-form') as HTMLFormElement;
   const input = byId('chat-input') as HTMLInputElement;
+  const sendBtn = form.querySelector<HTMLButtonElement>('.chat-send')!;
   const modelSel = mountSelect(byId('chat-model-sel'), 'Pick a model…');
   initMdClicks(scroll, (url) =>
     void openExternal(url).catch((err: unknown) => reportDebug('chat.link', err))
@@ -112,6 +114,13 @@ export const mountChat = (root: HTMLElement): void => {
   let history: UIMsg[] = [];
   let chatId = newChatId();
   let pending = false;
+
+  const setBusy = (on: boolean): void => {
+    pending = on;
+    sendBtn.disabled = on;
+    sendBtn.classList.toggle('is-busy', on);
+    input.disabled = on;
+  };
 
   const save = (): void => {
     void chatsSave(chatId, chatTitle(history), history.map(toStored)).then(() => {
@@ -194,7 +203,7 @@ export const mountChat = (root: HTMLElement): void => {
       : '';
 
   const runCompletion = (popOnError: boolean): void => {
-    pending = true;
+    setBusy(true);
     const thinking = addMsg('thinking', '<em>Starting model / thinking…</em>');
     chatSend(history.map(toFlat))
       .then((res) => {
@@ -218,7 +227,7 @@ export const mountChat = (root: HTMLElement): void => {
         if (popOnError) history.pop();
       })
       .finally(() => {
-        pending = false;
+        setBusy(false);
         scroll.scrollTop = scroll.scrollHeight;
         input.focus();
       });
@@ -227,7 +236,7 @@ export const mountChat = (root: HTMLElement): void => {
   const retryAt = (index: number): void => {
     const m = history[index];
     if (!m || m.role !== 'assistant' || pending || !modelSel.getValue()) return;
-    pending = true;
+    setBusy(true);
     const context = history.slice(0, index).map(toFlat);
     const body = scroll
       .querySelector(`.msg[data-index="${index}"]`)
@@ -246,7 +255,7 @@ export const mountChat = (root: HTMLElement): void => {
         reportDebug('chat.retry', err);
       })
       .finally(() => {
-        pending = false;
+        setBusy(false);
         renderAll(false);
         input.focus();
       });
@@ -298,6 +307,12 @@ export const mountChat = (root: HTMLElement): void => {
     switch (btn.dataset.act) {
       case 'copy':
         void navigator.clipboard.writeText(m.versions[m.vi]);
+        btn.innerHTML = ICON_CHECK;
+        btn.classList.add('is-done');
+        setTimeout(() => {
+          btn.innerHTML = ICON_COPY;
+          btn.classList.remove('is-done');
+        }, 1200);
         break;
       case 'prev':
         if (m.vi > 0) {

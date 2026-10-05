@@ -205,8 +205,17 @@ export const initMdClicks = (host: HTMLElement, openUrl: (url: string) => void):
   host.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
     if (t.closest('.code-copy')) {
-      const code = t.closest('.md-code')?.querySelector('code');
+      const btn = t.closest<HTMLButtonElement>('.code-copy');
+      const code = btn?.closest('.md-code')?.querySelector('code');
       if (code) void navigator.clipboard.writeText(code.textContent ?? '');
+      if (btn) {
+        btn.innerHTML = icon('check');
+        btn.classList.add('is-done');
+        setTimeout(() => {
+          btn.innerHTML = icon('copy');
+          btn.classList.remove('is-done');
+        }, 1200);
+      }
       return;
     }
     const link = t.closest<HTMLElement>('a.md-link');

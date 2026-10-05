@@ -1,10 +1,11 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
 export type ThemeName = 'dark' | 'light' | 'midnight' | 'sand' | 'forest';
 
-export interface SuperslmSettings {
+export interface LmSettings {
   theme: ThemeName;
   fullscreen: boolean;
   debug: boolean;
@@ -21,7 +22,7 @@ export type BackendBuild = 'cpu' | 'vulkan' | 'cuda-12.4' | 'cuda-13.4';
 
 const BACKEND_BUILDS = new Set<BackendBuild>(['cpu', 'vulkan', 'cuda-12.4', 'cuda-13.4']);
 
-const DEFAULT_SETTINGS: SuperslmSettings = {
+const DEFAULT_SETTINGS: LmSettings = {
   theme: 'dark',
   fullscreen: false,
   debug: false,
@@ -44,18 +45,35 @@ export const THEME_BG: Record<ThemeName, string> = {
   forest: '#151b17'
 };
 
-const superslmDir = (): string => path.join(os.homedir(), '.superslm');
-const settingsPath = (): string => path.join(superslmDir(), 'settings.json');
+const dataDir = (): string => path.join(os.homedir(), '.lmsuperapp');
+const legacyDir = (): string => path.join(os.homedir(), '.superslm'); // pre-0.2.1 name
+const settingsPath = (): string => path.join(dataDir(), 'settings.json');
 
 export async function ensureStorage(): Promise<void> {
-  await mkdir(superslmDir(), { recursive: true });
+  // one-time move of the old ~/.superslm dir (settings, models, chats, bin)
+  try {
+    if (existsSync(legacyDir()) && !existsSync(dataDir())) {
+      await rename(legacyDir(), dataDir());
+    }
+  } catch (err) {
+    console.error('Failed to migrate ~/.superslm to ~/.lmsuperapp:', err);
+  }
+  await mkdir(dataDir(), { recursive: true });
 }
 
+// paths saved under the old dir still point there after the rename — remap them
+const remapPath = (p: string): string =>
+  p.startsWith(legacyDir()) ? dataDir() + p.slice(legacyDir().length) : p;
+
 //TODO(settings): schema version + migration path once settings keep growing
-export async function loadSettings(): Promise<SuperslmSettings> {
+export async function loadSettings(): Promise<LmSettings> {
+  await ensureStorage();
   try {
     const raw = await readFile(settingsPath(), 'utf8');
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } as SuperslmSettings;
+    const s = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } as LmSettings;
+    s.modelFile = remapPath(s.modelFile);
+    s.localFiles = s.localFiles.map(remapPath);
+    return s;
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
       console.error('Failed to read settings.json, using defaults:', err);
@@ -65,8 +83,8 @@ export async function loadSettings(): Promise<SuperslmSettings> {
 }
 
 export async function patchSettings(
-  patch: Partial<SuperslmSettings>
-): Promise<SuperslmSettings> {
+  patch: Partial<LmSettings>
+): Promise<LmSettings> {
   const next = await loadSettings();
   if (patch.theme && THEME_VALUES.includes(patch.theme)) next.theme = patch.theme;
   if (typeof patch.fullscreen === 'boolean') next.fullscreen = patch.fullscreen;

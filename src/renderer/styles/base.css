@@ -486,6 +486,57 @@ body {
   display: inline-flex;
 }
 
+/* ---- feedback micro-states ---- */
+
+.action-btn:active,
+.icon-btn:active,
+.nav-item:active,
+.side-chat:active,
+.sort-btn:active,
+.msg-act:active,
+.settings-item:active,
+.csel-btn:active,
+.chat-send:active {
+  transform: translateY(1px);
+}
+
+.csel-menu {
+  animation: popIn 0.12s ease;
+}
+
+.tab.is-visible {
+  animation: tabIn 0.15s ease;
+}
+
+.code-copy.is-done,
+.detail-copy.is-done,
+.msg-act.is-done {
+  color: var(--accent);
+  opacity: 1;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes tabIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .code-copy .icon {
   width: 12px;
   height: 12px;

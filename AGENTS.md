@@ -31,7 +31,7 @@ Electron app, no frontend framework — vanilla TypeScript + DOM, organized as s
 
 **Three layers, one direction:**
 
-1. **Main process** (`src/`) — `main.ts` (window + IPC handlers + downloads + `shell.openExternal`), `preload.ts` (contextBridge → `window.superslm`), `llamacpp.ts` (llama-server wrapper), `settings.ts` (persistence). The renderer never touches Node directly — everything goes through the bridge, and the main process validates/sanitizes all paths and inputs.
+1. **Main process** (`src/`) — `main.ts` (window + IPC handlers + downloads + `shell.openExternal`), `preload.ts` (contextBridge → `window.lmsuperapp`), `llamacpp.ts` (llama-server wrapper), `settings.ts` (persistence). The renderer never touches Node directly — everything goes through the bridge, and the main process validates/sanitizes all paths and inputs.
 2. **Renderer core** (`src/renderer/core/`) — shared building blocks, one module per concern: `dom` (helpers/escapeHtml), `format`, `select` (custom dropdown), `chats` (sidebar history), `markdown` (md + KaTeX + code-copy + links), `icons` (SVG loader), `debug`, `tabs`. Anything reused by two views lives here, never duplicated.
 3. **Views** (`src/renderer/views/`) — one module per tab (`home`, `models`, `chat`, `library`, `finetune`, `settings`), each exporting a `mountX(root)` that renders into its tab and wires listeners. `app.ts` boots: mounts views, `initTabs`, `initTheme`, `fillIcons`, `initSideChats`.
 
@@ -47,7 +47,7 @@ Electron app, no frontend framework — vanilla TypeScript + DOM, organized as s
 - New persisted option → key in `settings.ts` defaults + `global.d.ts` type.
 - Python-side work (finetune etc.) → `src/backend/` (placeholder today).
 
-User data lives outside the repo in `~/.superslm/` (`settings.json`, `models/`, `chats/`).
+User data lives outside the repo in `~/.lmsuperapp/` (`settings.json`, `models/`, `chats/`).
 
 ## Conventions
 

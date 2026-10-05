@@ -52,7 +52,7 @@ const searchBin = (dir: string, depth: number): string | null => {
 };
 
 const findBinary = (): string | null => {
-  const local = searchBin(path.join(homedir(), '.superslm', 'bin'), 3);
+  const local = searchBin(path.join(homedir(), '.lmsuperapp', 'bin'), 3);
   if (local) return local;
   try {
     if (!spawnSync(BIN, ['--version'], { stdio: 'ignore' }).error) return BIN;

@@ -331,6 +331,67 @@
   outline-offset: 2px;
 }
 
+.chat-send:disabled {
+  cursor: default;
+}
+
+.chat-send.is-busy {
+  opacity: 0.7;
+}
+
+.chat-send.is-busy .icon {
+  display: none;
+}
+
+.chat-send.is-busy::after {
+  content: '';
+  width: 15px;
+  height: 15px;
+  border: 2px solid oklch(0.19 0.02 70 / 0.3);
+  border-top-color: oklch(0.19 0.02 70);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.chat-input:disabled {
+  opacity: 0.55;
+}
+
+.msg:last-child {
+  animation: msgIn 0.16s ease;
+}
+
+.msg-thinking .msg-body em {
+  animation: thinkPulse 1.3s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes msgIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes thinkPulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 /* ---- adaptive layout ---- */
 
 @media (max-width: 760px) {
