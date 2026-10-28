@@ -18,6 +18,17 @@ interface LmSettings {
   contextMessages: number;
   confirmOnClose: boolean;
   defaultModelSort: LmModelSort;
+  backendPort: number;
+  ctxSize: number;
+  gpuLayers: number;
+  threads: number;
+}
+
+interface LmSampling {
+  temperature: number;
+  topP: number;
+  topK: number;
+  systemPrompt: string;
 }
 
 interface LmAppInfo {
@@ -131,14 +142,23 @@ interface LmApi {
   chatsSave: (
     id: string,
     title: string,
-    messages: LmStoredMessage[]
+    messages: LmStoredMessage[],
+    sampling?: LmSampling
   ) => Promise<{ title: string; updated: number; messages: LmStoredMessage[] }>;
   chatsLoad: (
     id: string
-  ) => Promise<{ title: string; updated: number; messages: LmStoredMessage[] }>;
+  ) => Promise<{
+    title: string;
+    updated: number;
+    messages: LmStoredMessage[];
+    sampling?: LmSampling;
+  }>;
+  chatsRename: (id: string, title: string) => Promise<{ id: string; title: string }>;
+  chatsDelete: (id: string) => Promise<void>;
   chatSend: (
     messages: LmChatMessage[],
-    stream: boolean
+    stream: boolean,
+    sampling?: LmSampling
   ) => Promise<{ content: string; tokPerSec?: number; approx?: boolean }>;
   onChatChunk: (cb: (text: string) => void) => () => void;
   installBackend: () => Promise<{ path: string }>;

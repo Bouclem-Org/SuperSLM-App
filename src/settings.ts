@@ -21,6 +21,10 @@ export interface LmSettings {
   contextMessages: number;
   confirmOnClose: boolean;
   defaultModelSort: 'likes' | 'downloads';
+  backendPort: number;
+  ctxSize: number;
+  gpuLayers: number;
+  threads: number;
 }
 
 export type BackendBuild = 'cpu' | 'vulkan' | 'cuda-12.4' | 'cuda-13.4';
@@ -42,7 +46,11 @@ const DEFAULT_SETTINGS: LmSettings = {
   notifyOnReply: false,
   contextMessages: 20,
   confirmOnClose: false,
-  defaultModelSort: 'likes'
+  defaultModelSort: 'likes',
+  backendPort: 8391,
+  ctxSize: 4096,
+  gpuLayers: -1,
+  threads: 0
 };
 
 const THEME_VALUES: readonly ThemeName[] = ['dark', 'light', 'midnight', 'sand', 'forest'];
@@ -143,6 +151,38 @@ export async function patchSettings(
   }
   if (patch.defaultModelSort === 'likes' || patch.defaultModelSort === 'downloads') {
     next.defaultModelSort = patch.defaultModelSort;
+  }
+  if (
+    typeof patch.backendPort === 'number' &&
+    Number.isInteger(patch.backendPort) &&
+    patch.backendPort >= 1024 &&
+    patch.backendPort <= 65535
+  ) {
+    next.backendPort = patch.backendPort;
+  }
+  if (
+    typeof patch.ctxSize === 'number' &&
+    Number.isInteger(patch.ctxSize) &&
+    patch.ctxSize >= 256 &&
+    patch.ctxSize <= 262144
+  ) {
+    next.ctxSize = patch.ctxSize;
+  }
+  if (
+    typeof patch.gpuLayers === 'number' &&
+    Number.isInteger(patch.gpuLayers) &&
+    patch.gpuLayers >= -1 &&
+    patch.gpuLayers <= 999
+  ) {
+    next.gpuLayers = patch.gpuLayers;
+  }
+  if (
+    typeof patch.threads === 'number' &&
+    Number.isInteger(patch.threads) &&
+    patch.threads >= 0 &&
+    patch.threads <= 256
+  ) {
+    next.threads = patch.threads;
   }
   await ensureStorage();
   await writeFile(settingsPath(), JSON.stringify(next, null, 2) + '\n', 'utf8');

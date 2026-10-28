@@ -21,6 +21,8 @@ import retry from '../icons/retry.svg';
 import send from '../icons/send.svg';
 import settings from '../icons/settings.svg';
 import theme from '../icons/theme.svg';
+import trash from '../icons/trash.svg';
+import tune from '../icons/tune.svg';
 
 const ICONS: Record<string, string> = {
   backend,
@@ -45,7 +47,9 @@ const ICONS: Record<string, string> = {
   retry,
   send,
   settings,
-  theme
+  theme,
+  trash,
+  tune
 };
 
 export const icon = (name: string): string =>

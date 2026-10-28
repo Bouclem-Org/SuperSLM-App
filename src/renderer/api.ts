@@ -56,20 +56,31 @@ export const chatsList = (): Promise<LmChatMeta[]> => requireApi().chatsList();
 export const chatsSave = (
   id: string,
   title: string,
-  messages: LmStoredMessage[]
+  messages: LmStoredMessage[],
+  sampling?: LmSampling
 ): Promise<{ title: string; updated: number; messages: LmStoredMessage[] }> =>
-  requireApi().chatsSave(id, title, messages);
+  requireApi().chatsSave(id, title, messages, sampling);
 
 export const chatsLoad = (
   id: string
-): Promise<{ title: string; updated: number; messages: LmStoredMessage[] }> =>
-  requireApi().chatsLoad(id);
+): Promise<{
+  title: string;
+  updated: number;
+  messages: LmStoredMessage[];
+  sampling?: LmSampling;
+}> => requireApi().chatsLoad(id);
+
+export const chatsRename = (id: string, title: string): Promise<{ id: string; title: string }> =>
+  requireApi().chatsRename(id, title);
+
+export const chatsDelete = (id: string): Promise<void> => requireApi().chatsDelete(id);
 
 export const chatSend = (
   messages: LmChatMessage[],
-  stream: boolean
+  stream: boolean,
+  sampling?: LmSampling
 ): Promise<{ content: string; tokPerSec?: number; approx?: boolean }> =>
-  requireApi().chatSend(messages, stream);
+  requireApi().chatSend(messages, stream, sampling);
 
 export const onChatChunk = (cb: (text: string) => void): (() => void) =>
   requireApi().onChatChunk(cb);
