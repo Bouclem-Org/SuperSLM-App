@@ -12,11 +12,12 @@ import {
   chatCompletion,
   getBackendStatus,
   setIdleMinutes,
+  setLaunchParams,
   startBackend,
   stopBackend,
   waitReady
 } from './llamacpp';
-import type { ChatMessage } from './llamacpp';
+import type { ChatMessage, SamplingParams } from './llamacpp';
 import type { LmSettings } from './settings';
 import { ensureStorage, loadSettings, patchSettings, THEME_BG } from './settings';
 
@@ -102,15 +103,30 @@ ipcMain.handle('app:changelog', () =>
 ipcMain.handle('settings:get', () => loadSettings());
 
 ipcMain.handle('settings:patch', async (_event, patch: Partial<LmSettings>) => {
+  const prev = await loadSettings();
   const next = await patchSettings(patch);
   if (typeof patch?.idleStopMinutes === 'number') setIdleMinutes(next.idleStopMinutes);
   if (typeof patch?.confirmOnClose === 'boolean') confirmOnClose = next.confirmOnClose;
+  const launchChanged =
+    next.backendPort !== prev.backendPort ||
+    next.ctxSize !== prev.ctxSize ||
+    next.gpuLayers !== prev.gpuLayers ||
+    next.threads !== prev.threads;
+  if (launchChanged) {
+    setLaunchParams({
+      port: next.backendPort,
+      ctxSize: next.ctxSize,
+      gpuLayers: next.gpuLayers,
+      threads: next.threads
+    });
+    if (getBackendStatus().running) void stopBackend();
+  }
   if (
     typeof patch?.modelFile === 'string' &&
     getBackendStatus().running &&
     getBackendStatus().model !== next.modelFile
   ) {
-    stopBackend();
+    void stopBackend();
   }
   return next;
 });
@@ -340,7 +356,20 @@ ipcMain.handle('backend:start', (_event, modelPath: unknown) =>
 );
 ipcMain.handle('backend:stop', () => stopBackend());
 
-ipcMain.handle('backend:chat', async (event, messages: unknown, stream: unknown) => {
+const cleanSampling = (raw: unknown): SamplingParams => {
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const num = (v: unknown, min: number, max: number): number | undefined =>
+    typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : undefined;
+  return {
+    temperature: num(o.temperature, 0, 2),
+    topP: num(o.topP, 0, 1),
+    topK: num(o.topK, 0, 500),
+    systemPrompt:
+      typeof o.systemPrompt === 'string' ? o.systemPrompt.slice(0, 4000) : undefined
+  };
+};
+
+ipcMain.handle('backend:chat', async (event, messages: unknown, stream: unknown, sampling: unknown) => {
   if (!Array.isArray(messages)) throw new Error('Bad messages');
   const settings = await loadSettings();
   const msgs = cleanMsgs(messages)
@@ -360,7 +389,7 @@ ipcMain.handle('backend:chat', async (event, messages: unknown, stream: unknown)
   chatInFlight += 1;
   try {
     const t0 = Date.now();
-    const { content, tokens } = await chatCompletion(msgs, onChunk);
+    const { content, tokens } = await chatCompletion(msgs, onChunk, cleanSampling(sampling));
     const secs = (Date.now() - t0) / 1000;
     const approx = tokens === undefined;
     const n = tokens ?? Math.max(1, Math.round(content.length / 4));
@@ -414,7 +443,6 @@ const cleanMsgs = (messages: unknown): StoredMessage[] =>
         .slice(-100)
     : [];
 
-//TODO(chats): chats:delete + chats:rename IPC, then wire into the sidebar list
 ipcMain.handle('chats:list', async () => {
   try {
     const files = (await readdir(CHATS_DIR())).filter((f) => f.endsWith('.json'));
@@ -443,16 +471,34 @@ ipcMain.handle('chats:list', async () => {
   }
 });
 
-ipcMain.handle('chats:save', async (_e, id: unknown, title: unknown, messages: unknown) => {
+ipcMain.handle(
+  'chats:save',
+  async (_e, id: unknown, title: unknown, messages: unknown, sampling: unknown) => {
+    if (typeof id !== 'string' || !/^[\w-]+$/.test(id)) throw new Error('Bad chat id');
+    await mkdir(CHATS_DIR(), { recursive: true });
+    const payload = {
+      title: typeof title === 'string' && title.trim() ? title.trim().slice(0, 80) : 'Chat',
+      updated: Date.now(),
+      messages: cleanMsgs(messages),
+      sampling: cleanSampling(sampling)
+    };
+    await writeFile(path.join(CHATS_DIR(), `${id}.json`), JSON.stringify(payload));
+    return payload;
+  }
+);
+
+ipcMain.handle('chats:rename', async (_e, id: unknown, title: unknown) => {
   if (typeof id !== 'string' || !/^[\w-]+$/.test(id)) throw new Error('Bad chat id');
-  await mkdir(CHATS_DIR(), { recursive: true });
-  const payload = {
-    title: typeof title === 'string' && title.trim() ? title.trim().slice(0, 80) : 'Chat',
-    updated: Date.now(),
-    messages: cleanMsgs(messages)
-  };
-  await writeFile(path.join(CHATS_DIR(), `${id}.json`), JSON.stringify(payload));
-  return payload;
+  const file = path.join(CHATS_DIR(), `${id}.json`);
+  const data = JSON.parse(await readFile(file, 'utf8')) as { title?: string };
+  data.title = typeof title === 'string' && title.trim() ? title.trim().slice(0, 80) : 'Chat';
+  await writeFile(file, JSON.stringify(data));
+  return { id, title: data.title };
+});
+
+ipcMain.handle('chats:delete', async (_e, id: unknown) => {
+  if (typeof id !== 'string' || !/^[\w-]+$/.test(id)) throw new Error('Bad chat id');
+  await rm(path.join(CHATS_DIR(), `${id}.json`), { force: true });
 });
 
 ipcMain.handle('chats:load', async (_e, id: unknown) => {
@@ -544,6 +590,12 @@ void app.whenReady().then(async () => {
   await ensureStorage();
   const boot = await loadSettings();
   setIdleMinutes(boot.idleStopMinutes);
+  setLaunchParams({
+    port: boot.backendPort,
+    ctxSize: boot.ctxSize,
+    gpuLayers: boot.gpuLayers,
+    threads: boot.threads
+  });
   confirmOnClose = boot.confirmOnClose;
   await createWindow();
 
@@ -554,4 +606,13 @@ void app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+// give llama-server a chance to shut down cleanly before the process exits
+let quitting = false;
+app.on('before-quit', (e) => {
+  if (quitting || !getBackendStatus().running) return;
+  quitting = true;
+  e.preventDefault();
+  void stopBackend().finally(() => app.quit());
 });

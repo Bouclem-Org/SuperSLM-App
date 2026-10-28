@@ -24,15 +24,18 @@ contextBridge.exposeInMainWorld('lmsuperapp', {
   },
   localModels: (): Promise<unknown> => ipcRenderer.invoke('models:local'),
   chatsList: (): Promise<unknown> => ipcRenderer.invoke('chats:list'),
-  chatsSave: (id: string, title: string, messages: unknown): Promise<unknown> =>
-    ipcRenderer.invoke('chats:save', id, title, messages),
+  chatsSave: (id: string, title: string, messages: unknown, sampling: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('chats:save', id, title, messages, sampling),
   chatsLoad: (id: string): Promise<unknown> => ipcRenderer.invoke('chats:load', id),
+  chatsRename: (id: string, title: string): Promise<unknown> =>
+    ipcRenderer.invoke('chats:rename', id, title),
+  chatsDelete: (id: string): Promise<unknown> => ipcRenderer.invoke('chats:delete', id),
   getBackendStatus: (): Promise<unknown> => ipcRenderer.invoke('backend:status'),
   startBackend: (modelPath: string): Promise<unknown> =>
     ipcRenderer.invoke('backend:start', modelPath),
   stopBackend: (): Promise<unknown> => ipcRenderer.invoke('backend:stop'),
-  chatSend: (messages: unknown, stream: boolean): Promise<unknown> =>
-    ipcRenderer.invoke('backend:chat', messages, stream),
+  chatSend: (messages: unknown, stream: boolean, sampling: unknown): Promise<unknown> =>
+    ipcRenderer.invoke('backend:chat', messages, stream, sampling),
   onChatChunk: (cb: (t: string) => void) => {
     const listener = (_event: unknown, text: string): void => cb(text);
     ipcRenderer.on('chat:chunk', listener);

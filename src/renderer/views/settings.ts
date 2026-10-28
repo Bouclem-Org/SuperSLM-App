@@ -202,6 +202,26 @@ const initBackend = (): void => {
     });
   });
 
+  const patchInt = (
+    box: HTMLInputElement,
+    key: 'backendPort' | 'ctxSize' | 'gpuLayers' | 'threads',
+    min: number,
+    max: number
+  ): void => {
+    box.addEventListener('change', () => {
+      const n = Math.round(Number(box.value));
+      if (!Number.isInteger(n) || n < min || n > max) return;
+      box.value = String(n);
+      patchSettings({ [key]: n })
+        .then(() => refreshBackendStatus())
+        .catch((err: unknown) => console.error(`Failed to save ${key}:`, err));
+    });
+  };
+  patchInt(byId('opt-port') as HTMLInputElement, 'backendPort', 1024, 65535);
+  patchInt(byId('opt-ctx') as HTMLInputElement, 'ctxSize', 256, 262144);
+  patchInt(byId('opt-ngl') as HTMLInputElement, 'gpuLayers', -1, 999);
+  patchInt(byId('opt-threads') as HTMLInputElement, 'threads', 0, 256);
+
   getSettings()
     .then((s) => {
       document.querySelectorAll<HTMLInputElement>('input[name="idletime"]').forEach((r) => {
@@ -210,6 +230,10 @@ const initBackend = (): void => {
       document.querySelectorAll<HTMLInputElement>('input[name="bebuild"]').forEach((r) => {
         r.checked = r.value === s.backendBuild;
       });
+      (byId('opt-port') as HTMLInputElement).value = String(s.backendPort);
+      (byId('opt-ctx') as HTMLInputElement).value = String(s.ctxSize);
+      (byId('opt-ngl') as HTMLInputElement).value = String(s.gpuLayers);
+      (byId('opt-threads') as HTMLInputElement).value = String(s.threads);
     })
     .catch((err: unknown) => console.error('Failed to load settings:', err));
 
@@ -431,6 +455,31 @@ export const mountSettings = (root: HTMLElement): void => {
               <div class="about-row"><dt>Engine</dt><dd>llama.cpp</dd></div>
             </dl>
             <p class="settings-note">More engines may come later.</p>
+          </div>
+
+          <div class="section-group">
+            <h3 class="section-title">Launch parameters</h3>
+            <label class="setting-row">
+              <input type="number" id="opt-port" min="1024" max="65535" step="1" />
+              <span>Port</span>
+              <small>llama-server listens on 127.0.0.1</small>
+            </label>
+            <label class="setting-row">
+              <input type="number" id="opt-ctx" min="256" max="262144" step="256" />
+              <span>Context size</span>
+              <small>--ctx-size, in tokens</small>
+            </label>
+            <label class="setting-row">
+              <input type="number" id="opt-ngl" min="-1" max="999" step="1" />
+              <span>GPU layers</span>
+              <small>--n-gpu-layers, -1 = auto</small>
+            </label>
+            <label class="setting-row">
+              <input type="number" id="opt-threads" min="0" max="256" step="1" />
+              <span>Threads</span>
+              <small>--threads, 0 = auto</small>
+            </label>
+            <p class="settings-note">Applied on (re)start — changing these stops a running backend.</p>
           </div>
 
           <div class="section-group">

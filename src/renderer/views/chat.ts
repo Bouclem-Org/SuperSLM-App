@@ -8,7 +8,13 @@ import {
   openExternal,
   patchSettings
 } from '../api';
-import { refreshSideChats, setActiveSideChat, setChatOpener, setNewChatHandler } from '../core/chats';
+import {
+  refreshSideChats,
+  setActiveSideChat,
+  setChatOpener,
+  setChatRenameHandler,
+  setNewChatHandler
+} from '../core/chats';
 import { isDebugEnabled, reportDebug } from '../core/debug';
 import { byId, escapeHtml } from '../core/dom';
 import { fileName } from '../core/format';
@@ -22,6 +28,14 @@ const ICON_COPY = icon('copy');
 const ICON_RETRY = icon('retry');
 const ICON_EDIT = icon('edit');
 const ICON_CHECK = icon('check');
+const ICON_TUNE = icon('tune');
+
+const DEFAULT_SAMPLING: LmSampling = {
+  temperature: 0.8,
+  topP: 0.95,
+  topK: 40,
+  systemPrompt: ''
+};
 
 interface MsgStat {
   tps?: number;
@@ -79,27 +93,52 @@ const fmtTime = (ts: number): string => {
 export const mountChat = (root: HTMLElement): void => {
   root.innerHTML = `
     <div class="chat">
-      <div class="chat-top">
-        <div id="chat-model-sel"></div>
-        <!-- TODO(chat): stop-generation button while the backend is answering -->
+      <div class="chat-main">
+        <div class="chat-top">
+          <div id="chat-model-sel"></div>
+          <button class="icon-btn" id="chat-params" type="button" aria-label="Chat settings" title="Chat settings">${ICON_TUNE}</button>
+          <!-- TODO(chat): stop-generation button while the backend is answering -->
+        </div>
+        <div class="chat-scroll" id="chat-scroll">
+          <p class="chat-empty" id="chat-empty">Pick a model above, then send a message.</p>
+        </div>
+        <form class="chat-bar" id="chat-form">
+          <input
+            id="chat-input"
+            class="chat-input"
+            type="text"
+            placeholder="Message…"
+            autocomplete="off"
+          />
+          <button class="chat-send" type="submit" aria-label="Send">${ICON_SEND}</button>
+        </form>
       </div>
-      <div class="chat-scroll" id="chat-scroll">
-        <p class="chat-empty" id="chat-empty">Pick a model above, then send a message.</p>
-      </div>
-      <form class="chat-bar" id="chat-form">
-        <input
-          id="chat-input"
-          class="chat-input"
-          type="text"
-          placeholder="Message…"
-          autocomplete="off"
-        />
-        <button class="chat-send" type="submit" aria-label="Send">${ICON_SEND}</button>
-      </form>
+      <aside class="chat-side" id="chat-side" hidden>
+        <h3 class="chat-side-title">This chat</h3>
+        <label class="chat-side-row">
+          <span>Temperature</span>
+          <input type="number" id="cs-temp" min="0" max="2" step="0.05" />
+          <small>0–2, higher is wilder</small>
+        </label>
+        <label class="chat-side-row">
+          <span>Top-p</span>
+          <input type="number" id="cs-topp" min="0" max="1" step="0.01" />
+          <small>Nucleus sampling (0–1)</small>
+        </label>
+        <label class="chat-side-row">
+          <span>Top-k</span>
+          <input type="number" id="cs-topk" min="0" max="500" step="1" />
+          <small>Candidate pool, 0 disables</small>
+        </label>
+        <label class="chat-side-row">
+          <span>System prompt</span>
+          <textarea id="cs-sys" rows="5" placeholder="Optional system prompt…"></textarea>
+        </label>
+        <p class="chat-side-note">Saved with this conversation.</p>
+      </aside>
     </div>`;
 
   //TODO(chat): streaming replies (token-by-token), then a stop button makes sense
-  //TODO(chat): system prompt + temperature controls per conversation
   //TODO(chat): Ctrl+Up edit-last-message shortcut
 
   const scroll = byId('chat-scroll');
@@ -116,6 +155,27 @@ export const mountChat = (root: HTMLElement): void => {
   let chatId = newChatId();
   let pending = false;
   let chatCfg = { streamReplies: true, notifyOnReply: false };
+  let sampling: LmSampling = { ...DEFAULT_SAMPLING };
+  let chatTitleOverride: string | null = null;
+
+  const side = byId('chat-side');
+  const paramsBtn = byId('chat-params');
+  const tempIn = byId('cs-temp') as HTMLInputElement;
+  const topPIn = byId('cs-topp') as HTMLInputElement;
+  const topKIn = byId('cs-topk') as HTMLInputElement;
+  const sysIn = byId('cs-sys') as HTMLTextAreaElement;
+
+  paramsBtn.addEventListener('click', () => {
+    side.hidden = !side.hidden;
+    paramsBtn.classList.toggle('is-active', !side.hidden);
+  });
+
+  const fillPanel = (): void => {
+    tempIn.value = String(sampling.temperature);
+    topPIn.value = String(sampling.topP);
+    topKIn.value = String(sampling.topK);
+    sysIn.value = sampling.systemPrompt;
+  };
 
   const setBusy = (on: boolean): void => {
     pending = on;
@@ -152,11 +212,41 @@ export const mountChat = (root: HTMLElement): void => {
   };
 
   const save = (): void => {
-    void chatsSave(chatId, chatTitle(history), history.map(toStored)).then(() => {
+    void chatsSave(
+      chatId,
+      chatTitleOverride ?? chatTitle(history),
+      history.map(toStored),
+      sampling
+    ).then(() => {
       setActiveSideChat(chatId);
       refreshSideChats();
     });
   };
+
+  const bindNum = (
+    el: HTMLInputElement,
+    key: 'temperature' | 'topP' | 'topK',
+    min: number,
+    max: number
+  ): void => {
+    el.addEventListener('change', () => {
+      const n = Number(el.value);
+      if (!Number.isFinite(n) || n < min || n > max) {
+        el.value = String(sampling[key]);
+        return;
+      }
+      sampling[key] = key === 'topK' ? Math.round(n) : n;
+      el.value = String(sampling[key]);
+      if (history.length) save();
+    });
+  };
+  bindNum(tempIn, 'temperature', 0, 2);
+  bindNum(topPIn, 'topP', 0, 1);
+  bindNum(topKIn, 'topK', 0, 500);
+  sysIn.addEventListener('change', () => {
+    sampling.systemPrompt = sysIn.value;
+    if (history.length) save();
+  });
 
   const addMsg = (kind: string, html: string): HTMLElement => {
     empty.hidden = true;
@@ -236,7 +326,7 @@ export const mountChat = (root: HTMLElement): void => {
     liveText = '';
     const thinking = addMsg('thinking', '<em>Starting model / thinking…</em>');
     liveBody = thinking.querySelector<HTMLElement>('.msg-body');
-    chatSend(history.map(toFlat), chatCfg.streamReplies)
+    chatSend(history.map(toFlat), chatCfg.streamReplies, sampling)
       .then((res) => {
         liveBody = null;
         thinking.remove();
@@ -278,7 +368,7 @@ export const mountChat = (root: HTMLElement): void => {
     if (body) body.innerHTML = '<em>Thinking…</em>';
     liveText = '';
     liveBody = body ?? null;
-    chatSend(context, chatCfg.streamReplies)
+    chatSend(context, chatCfg.streamReplies, sampling)
       .then((res) => {
         liveBody = null;
         m.versions.push(res.content);
@@ -407,15 +497,25 @@ export const mountChat = (root: HTMLElement): void => {
     chatsLoad(id)
       .then((chat) => {
         chatId = id;
+        chatTitleOverride = chat.title;
+        sampling = { ...DEFAULT_SAMPLING, ...chat.sampling };
+        fillPanel();
         history = chat.messages.map(toUIMsg);
         renderAll();
       })
       .catch((err: unknown) => reportDebug('chat.load', err));
   });
 
+  setChatRenameHandler((id, title) => {
+    if (id === chatId) chatTitleOverride = title;
+  });
+
   setNewChatHandler(() => {
     history = [];
     chatId = newChatId();
+    chatTitleOverride = null;
+    sampling = { ...DEFAULT_SAMPLING };
+    fillPanel();
     setActiveSideChat(chatId);
     refreshSideChats();
     renderAll();
@@ -437,6 +537,7 @@ export const mountChat = (root: HTMLElement): void => {
   });
 
   refreshModels();
+  fillPanel();
   onTabOpen('chat', () => {
     refreshModels();
     refreshSideChats();

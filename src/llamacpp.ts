@@ -4,16 +4,28 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
-//TODO(config): port should be a setting once we run more than one backend
-const PORT = 8391;
 const BIN = process.platform === 'win32' ? 'llama-server.exe' : 'llama-server';
-const BASE = `http://127.0.0.1:${PORT}`;
 const READY_TIMEOUT_MS = 120000;
 const IDLE_CHECK_MS = 30000;
+const KILL_TIMEOUT_MS = 3000;
 
 export interface ChatMessage {
   role: string;
   content: string;
+}
+
+export interface LaunchParams {
+  port: number;
+  ctxSize: number;
+  gpuLayers: number; // -1 = let llama.cpp decide
+  threads: number; // 0 = auto
+}
+
+export interface SamplingParams {
+  temperature?: number;
+  topP?: number;
+  topK?: number;
+  systemPrompt?: string;
 }
 
 export interface BackendStatus {
@@ -32,6 +44,14 @@ let currentModel = '';
 let lastActivity = 0;
 let idleMinutes = 0;
 let idleTimer: NodeJS.Timeout | null = null;
+let launch: LaunchParams = { port: 8391, ctxSize: 4096, gpuLayers: -1, threads: 0 };
+let activePort = launch.port;
+
+const base = (): string => `http://127.0.0.1:${activePort}`;
+
+export const setLaunchParams = (params: LaunchParams): void => {
+  launch = { ...params };
+};
 
 const searchBin = (dir: string, depth: number): string | null => {
   if (depth < 0) return null;
@@ -66,7 +86,7 @@ export const getBackendStatus = (): BackendStatus => ({
   binary: findBinary(),
   running: proc !== null,
   ready,
-  port: PORT,
+  port: proc ? activePort : launch.port,
   model: currentModel,
   lastError
 });
@@ -77,7 +97,7 @@ export const setIdleMinutes = (minutes: number): void => {
   idleTimer = null;
   if (minutes > 0) {
     idleTimer = setInterval(() => {
-      if (proc && Date.now() - lastActivity > idleMinutes * 60000) stopBackend();
+      if (proc && Date.now() - lastActivity > idleMinutes * 60000) void stopBackend();
     }, IDLE_CHECK_MS);
   }
 };
@@ -99,13 +119,19 @@ export const startBackend = (modelPath: string): BackendStatus => {
   lastError = null;
   ready = false;
   currentModel = modelPath;
-  //TODO(params): expose --ctx-size, --n-gpu-layers, --threads etc. in Settings > Backend
-  const child = spawn(
-    bin,
-    ['--model', modelPath, '--port', String(PORT), '--ctx-size', '4096'],
-    { stdio: ['ignore', 'pipe', 'pipe'] }
-  );
+  const args = [
+    '--model',
+    modelPath,
+    '--port',
+    String(launch.port),
+    '--ctx-size',
+    String(launch.ctxSize)
+  ];
+  if (launch.gpuLayers >= 0) args.push('--n-gpu-layers', String(launch.gpuLayers));
+  if (launch.threads > 0) args.push('--threads', String(launch.threads));
+  const child = spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'] });
   proc = child;
+  activePort = launch.port;
   touch();
   child.stderr?.on('data', (d: Buffer) => {
     lastError = d.toString().trim().slice(-300);
@@ -127,7 +153,7 @@ export const waitReady = async (): Promise<void> => {
   while (Date.now() < deadline) {
     if (!proc) throw new Error(`Backend stopped${lastError ? `: ${lastError}` : ''}`);
     try {
-      const res = await fetch(`${BASE}/health`);
+      const res = await fetch(`${base()}/health`);
       if (res.ok) {
         ready = true;
         touch();
@@ -141,20 +167,26 @@ export const waitReady = async (): Promise<void> => {
   throw new Error('Backend start timed out — the model may be too large');
 };
 
-//TODO(sampling): expose temperature/top_p/top_k/system prompt per chat
 export const chatCompletion = async (
   messages: ChatMessage[],
-  onChunk?: (text: string) => void
+  onChunk?: (text: string) => void,
+  sampling?: SamplingParams
 ): Promise<{ content: string; tokens?: number }> => {
   if (!proc) throw new Error('BACKEND_DOWN: backend is not running');
   const stream = typeof onChunk === 'function';
-  const res = await fetch(`${BASE}/v1/chat/completions`, {
+  const msgs = sampling?.systemPrompt
+    ? [{ role: 'system', content: sampling.systemPrompt }, ...messages]
+    : messages;
+  const res = await fetch(`${base()}/v1/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'local',
-      messages,
+      messages: msgs,
       stream,
+      ...(sampling?.temperature !== undefined ? { temperature: sampling.temperature } : {}),
+      ...(sampling?.topP !== undefined ? { top_p: sampling.topP } : {}),
+      ...(sampling?.topK !== undefined ? { top_k: sampling.topK } : {}),
       ...(stream ? { stream_options: { include_usage: true } } : {})
     })
   });
@@ -215,10 +247,21 @@ export const chatCompletion = async (
   return { content, tokens };
 };
 
-//TODO(lifecycle): graceful shutdown via /health first, kill only as fallback
-export const stopBackend = (): BackendStatus => {
-  proc?.kill();
+export const stopBackend = async (): Promise<BackendStatus> => {
+  const p = proc;
   proc = null;
   ready = false;
+  if (!p || p.exitCode !== null || p.signalCode !== null) return getBackendStatus();
+  p.kill(); // SIGTERM first — llama-server shuts down cleanly on POSIX
+  await new Promise<void>((resolve) => {
+    const timer = setTimeout(() => {
+      p.kill('SIGKILL');
+      resolve();
+    }, KILL_TIMEOUT_MS);
+    p.once('exit', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
   return getBackendStatus();
 };

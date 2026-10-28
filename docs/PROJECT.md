@@ -4,18 +4,23 @@ A desktop superapp for language models (LMs), built with Electron.
 
 ## Status
 
-v0.2.0 — LM SuperApp. Home dashboard (stat tiles), Models (HF sort + search, detail panel, GGUF downloads to
+v0.2.2 — LM SuperApp. Home dashboard (stat tiles), Models (HF sort + search, detail panel, GGUF downloads to
 `~/.lmsuperapp/models/`, local .gguf picker), Chat (custom model select,
-chat history in `~/.lmsuperapp/chats/`, real inference via llama.cpp
+chat history in `~/.lmsuperapp/chats/` with rename/delete hover actions,
+per-chat sampling params + system prompt, real inference via llama.cpp
 backend), Library (local files + downloads), Finetune and Export
 (placeholders via "+" menu), and Settings (General, Backend, Theme, Changelog, Debug) via the
 sidebar gear. Five themes, text size, fullscreen, debug, devtools,
-modelFile, localFiles, confirmDownload, idleStopMinutes and backendBuild
+modelFile, localFiles, confirmDownload, idleStopMinutes, backendBuild,
+backendPort, ctxSize, gpuLayers and threads
 persist to `~/.lmsuperapp/settings.json`. App icon in
 `icons/` (regenerate via `node scripts/gen-icon.mjs`). `src/backend/` holds the
 Python side for future features. `src/llamacpp.ts`
-manages `llama-server` on port 8391: spawn, /health polling, OpenAI-style
-/v1/chat/completions, idle auto-stop, status/start/stop IPC. Install
+manages `llama-server` on a configurable port (default 8391): spawn with
+launch params (--ctx-size/--n-gpu-layers/--threads), /health polling,
+OpenAI-style /v1/chat/completions with per-chat sampling, idle auto-stop,
+graceful SIGTERM-then-SIGKILL shutdown (also on app quit),
+status/start/stop IPC. Install
 button pulls the latest llama.cpp Windows release from GitHub into
 `~/.lmsuperapp/bin`. Renderer is modular: core/api/views.
 

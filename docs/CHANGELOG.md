@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.2 - 2026-10-28
+
+- Backend port is now a setting (Settings > Backend > Launch parameters, default 8391) — llama-server no longer hardcodes 8391
+- Launch parameters in Settings > Backend: port, context size (`--ctx-size`), GPU layers (`--n-gpu-layers`, -1 = auto), threads (`--threads`, 0 = auto); changing them stops a running backend so the next start picks them up
+- Per-chat sampling: an openable panel on the right of the chat view with temperature, top-p, top-k and a system prompt — saved inside each chat's JSON and sent with every request
+- Graceful backend shutdown: stop sends SIGTERM first, force-kills only after a 3s timeout, and quitting the app now stops a running llama-server instead of orphaning it
+- Sidebar chats get hover actions: rename (inline edit) and delete (two-click confirm); deleting the open chat starts a fresh one, and renamed titles survive later auto-saves
+
 ## 0.2.1 - 2026-10-05
 
 - Chat replies stream live — tokens appear as the model writes (SSE via llama-server)

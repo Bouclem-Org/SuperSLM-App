@@ -432,6 +432,63 @@ body {
   color: var(--text);
 }
 
+.side-chat:focus-visible {
+  outline: 1.5px solid var(--accent);
+  outline-offset: -1.5px;
+}
+
+.side-chat-acts {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.side-chat:hover .side-chat-acts,
+.side-chat:focus-within .side-chat-acts {
+  display: flex;
+}
+
+.side-chat-act {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.side-chat-act:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.side-chat-act .icon {
+  width: 12px;
+  height: 12px;
+}
+
+.side-chat-act.is-armed {
+  color: var(--err);
+}
+
+.side-chat-rename {
+  flex: 1;
+  min-width: 0;
+  padding: 1px 4px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+}
+
 .side-chat-title {
   flex: 1;
   overflow: hidden;
